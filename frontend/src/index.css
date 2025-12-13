@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@700;900&family=Manrope:wght@400;500&family=JetBrains+Mono:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@700;900&family=Manrope:wght@400;500&family=JetBrains+Mono:wght@500&family=Rajdhani:wght@700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -38,28 +38,7 @@ code {
         --ring: 249 152 46;
         --radius: 1rem;
     }
-    .light {
-        --background: 255 255 255;
-        --foreground: 0 0 0;
-        --card: 249 250 251;
-        --card-foreground: 0 0 0;
-        --popover: 255 255 255;
-        --popover-foreground: 0 0 0;
-        --primary: 249 152 46;
-        --primary-foreground: 0 0 0;
-        --secondary: 243 244 246;
-        --secondary-foreground: 0 0 0;
-        --muted: 156 163 175;
-        --muted-foreground: 107 114 128;
-        --accent: 249 152 46;
-        --accent-foreground: 0 0 0;
-        --destructive: 239 68 68;
-        --destructive-foreground: 255 255 255;
-        --border: 229 231 235;
-        --input: 229 231 235;
-        --ring: 249 152 46;
-    }
-    .dark {
+    :root {
         --background: 27 27 27;
         --foreground: 255 255 255;
         --card: 39 39 42;
@@ -87,8 +66,15 @@ code {
         @apply border-border;
     }
     body {
-        @apply bg-background text-foreground transition-colors duration-300;
+        @apply bg-[#1B1B1B] text-foreground;
     }
+}
+
+.font-f1 {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
 }
 
 .font-heading {
