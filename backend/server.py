@@ -603,6 +603,15 @@ async def get_checkout_history(current_user: dict = Depends(get_current_user)):
     checkouts = await db.checkouts.find({}, {"_id": 0}).sort("checkout_time", -1).to_list(1000)
     return checkouts
 
+# Get ALL checkouts for a project (active + completed) - for Wrap-Up Center audit
+@api_router.get("/checkouts/project/{project_id}")
+async def get_project_checkouts(project_id: str, current_user: dict = Depends(get_current_user)):
+    checkouts = await db.checkouts.find(
+        {"project_id": project_id}, 
+        {"_id": 0}
+    ).sort("checkout_time", -1).to_list(1000)
+    return checkouts
+
 # Transfer Equipment between projects
 @api_router.post("/checkouts/transfer")
 async def transfer_equipment(request: TransferEquipmentRequest, current_user: dict = Depends(get_current_user)):
