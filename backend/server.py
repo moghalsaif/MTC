@@ -377,6 +377,8 @@ async def mark_out(request: MarkOutRequest, current_user: dict = Depends(get_cur
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
+    packing_start_time = datetime.now(timezone.utc).isoformat()
+    
     checkout = Checkout(
         item_id=request.item_id,
         item_name=item["name"],
@@ -384,7 +386,8 @@ async def mark_out(request: MarkOutRequest, current_user: dict = Depends(get_cur
         project_name=project["name"],
         quantity_out=request.quantity,
         expected_return=request.expected_return,
-        notes=request.notes
+        notes=request.notes,
+        packing_start_time=packing_start_time
     )
     
     await db.checkouts.insert_one(checkout.model_dump())
