@@ -176,24 +176,16 @@ export default function ItemsOut() {
                     </div>
                   </div>
                   <div className="flex space-x-3">
-                    {!isPacking ? (
-                      <Button
-                        onClick={() => handleStartPacking(projectData.project_id)}
-                        data-testid={`start-packing-${projectName}`}
-                        className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold uppercase tracking-wider rounded-2xl"
-                      >
-                        <Play size={16} className="mr-2" />
-                        Start Packing
-                      </Button>
-                    ) : (
-                      <div className="bg-emerald-950/30 border border-emerald-900 px-4 py-2 rounded-2xl">
-                        <span className="text-emerald-400 font-data text-sm">PACKING IN PROGRESS</span>
+                    {isPacking && elapsedTime && (
+                      <div className="bg-emerald-950/30 border border-emerald-900 px-4 py-2 rounded-2xl flex items-center space-x-2">
+                        <Clock size={16} className="text-emerald-400 animate-pulse" />
+                        <span className="text-emerald-400 font-data text-sm font-bold">{elapsedTime} ELAPSED</span>
                       </div>
                     )}
                     <Button
                       onClick={() => handleGeneratePDF(projectData.project_id, projectName)}
                       data-testid={`generate-pdf-${projectName}`}
-                      className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl"
+                      className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl shadow-lg"
                     >
                       <FileText size={16} className="mr-2" />
                       Packing List PDF
@@ -201,12 +193,12 @@ export default function ItemsOut() {
                   </div>
                 </div>
 
-                {!isPacking && (
-                  <div className="bg-blue-950/30 border border-blue-900 rounded-2xl p-4 mb-4">
+                {isPacking && (
+                  <div className="bg-emerald-950/30 border border-emerald-900 rounded-2xl p-4 mb-4">
                     <div className="flex items-start space-x-3">
-                      <AlertCircle className="text-blue-400 mt-0.5" size={20} />
-                      <div className="text-sm text-blue-300">
-                        <strong>Click "Start Packing"</strong> to begin tracking packing time. Then mark each item as you pack it.
+                      <Clock className="text-emerald-400 mt-0.5 animate-pulse" size={20} />
+                      <div className="text-sm text-emerald-300">
+                        <strong>Timer started automatically!</strong> Mark each item as you pack it. Packing time is being tracked.
                       </div>
                     </div>
                   </div>
@@ -250,8 +242,7 @@ export default function ItemsOut() {
                           </div>
                         </div>
 
-                        {isPacking && (
-                          <div className="ml-6 flex flex-col space-y-2">
+                        <div className="ml-6 flex flex-col space-y-2">
                             <div className="text-xs text-[#71717A] uppercase tracking-wider mb-1">Quick Mark In:</div>
                             <div className="flex space-x-2">
                               <button
@@ -283,7 +274,6 @@ export default function ItemsOut() {
                               </button>
                             </div>
                           </div>
-                        )}
                       </div>
                     </div>
                   ))}
