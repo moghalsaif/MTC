@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, Package, PackageOpen, FolderKanban, AlertTriangle, PackageX, Wrench, LogOut } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
+import { LayoutDashboard, Package, PackageOpen, FolderKanban, AlertTriangle, PackageX, Wrench, LogOut, Sun, Moon } from 'lucide-react';
 
 
 
@@ -9,6 +10,7 @@ const API = `${BACKEND_URL}/api`;
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -28,12 +30,12 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1B1B1B] noise-bg">
-      <nav className="border-b border-[#3F3F46] bg-[#27272A]">
+    <div className="min-h-screen bg-background noise-bg transition-colors duration-300">
+      <nav className="border-b border-border bg-card transition-colors duration-300">
         <div className="max-w-[1920px] mx-auto px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-12">
-              <h1 className="font-heading text-xl font-black text-white tracking-tight" data-testid="app-title">
+              <h1 className="font-heading text-xl font-black text-foreground tracking-tight" data-testid="app-title">
                 MACH TRAFFIC CONTROLLER
               </h1>
               <div className="flex space-x-2">
@@ -46,8 +48,8 @@ export default function Layout() {
                       data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
                       className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
                         isActive(item.path)
-                          ? 'bg-[#F9982E] text-black shadow-lg'
-                          : 'text-[#A1A1AA] hover:text-white hover:bg-[#3F3F46]'
+                          ? 'bg-primary text-primary-foreground shadow-lg'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                       }`}
                     >
                       <Icon size={16} />
@@ -58,11 +60,19 @@ export default function Layout() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-[#A1A1AA]" data-testid="user-name">{user?.name}</span>
+              <span className="text-sm text-muted-foreground" data-testid="user-name">{user?.name}</span>
+              <button
+                onClick={toggleTheme}
+                data-testid="theme-toggle"
+                className="p-2 rounded-xl bg-card hover:bg-accent/10 transition-colors"
+                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {theme === 'dark' ? <Sun size={18} className="text-foreground" /> : <Moon size={18} className="text-foreground" />}
+              </button>
               <button
                 onClick={logout}
                 data-testid="logout-button"
-                className="px-4 py-2 rounded-2xl text-white bg-[#3F3F46] hover:bg-[#EF4444] transition-colors font-medium text-sm"
+                className="px-4 py-2 rounded-2xl text-foreground bg-card hover:bg-destructive hover:text-destructive-foreground transition-colors font-medium text-sm"
                 title="Logout"
               >
                 Logout
