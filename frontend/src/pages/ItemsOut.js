@@ -257,7 +257,7 @@ export default function ItemsOut() {
             </Select>
           </div>
 
-          {selectedProject && checkouts.length > 0 && (
+          {selectedProject && allProjectCheckouts.length > 0 && (
             <div className="flex items-center space-x-4">
               {isPacking && elapsedTime && (
                 <div className="bg-emerald-950/30 border border-emerald-900 px-4 py-2 rounded-2xl flex items-center space-x-2">
@@ -271,7 +271,7 @@ export default function ItemsOut() {
                 className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl shadow-lg"
               >
                 <FileText size={16} className="mr-2" />
-                Packing List PDF
+                {checkouts.length === 0 ? 'Return Confirmation PDF' : 'Packing List PDF'}
               </Button>
             </div>
           )}
@@ -284,11 +284,57 @@ export default function ItemsOut() {
           <div className="text-white text-lg font-medium mb-2">Select a project to get started</div>
           <div className="text-[#A1A1AA]">Choose a project from the dropdown above to view items that need packing</div>
         </div>
-      ) : checkouts.length === 0 ? (
-        <div className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-12 text-center" data-testid="no-items-out">
-          <CheckCircle2 size={48} className="mx-auto text-emerald-500 mb-4" />
-          <div className="text-white text-lg font-medium mb-2">All items returned</div>
-          <div className="text-[#A1A1AA]">No items currently out for {selectedProject?.name}</div>
+      ) : checkouts.length === 0 && allProjectCheckouts.length === 0 ? (
+        <div className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-12 text-center" data-testid="no-items-assigned">
+          <PackageOpen size={48} className="mx-auto text-[#71717A] mb-4" />
+          <div className="text-white text-lg font-medium mb-2">No items assigned to this project</div>
+          <div className="text-[#A1A1AA]">Go to Inventory and mark items out for {selectedProject?.name}</div>
+        </div>
+      ) : checkouts.length === 0 && allProjectCheckouts.length > 0 ? (
+        <div className="bg-[#27272A] border border-emerald-900 rounded-2xl p-8" data-testid="all-items-returned">
+          <div className="text-center mb-6">
+            <CheckCircle2 size={64} className="mx-auto text-emerald-500 mb-4" />
+            <div className="text-emerald-400 text-2xl font-heading font-bold mb-2">✓ 100% INVENTORY VERIFIED</div>
+            <div className="text-white text-lg font-medium mb-2">All items returned for {selectedProject?.name}</div>
+            <div className="text-[#A1A1AA]">
+              {allProjectCheckouts.length} item(s) were assigned to this project and have been verified as returned.
+            </div>
+          </div>
+          
+          {/* Summary of returned items */}
+          <div className="bg-[#1B1B1B] rounded-2xl p-4 mb-6">
+            <div className="text-sm text-[#71717A] uppercase tracking-wider mb-3">Return Summary</div>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold text-white font-data">{allProjectCheckouts.length}</div>
+                <div className="text-xs text-[#A1A1AA]">Items Assigned</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-emerald-400 font-data">
+                  {allProjectCheckouts.reduce((sum, c) => sum + c.quantity_out, 0)}
+                </div>
+                <div className="text-xs text-[#A1A1AA]">Total Qty Out</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-emerald-400 font-data">
+                  {allProjectCheckouts.reduce((sum, c) => sum + (c.quantity_returned || 0), 0)}
+                </div>
+                <div className="text-xs text-[#A1A1AA]">Total Returned</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-sm text-[#A1A1AA] mb-3">Generate final confirmation document for audit records</div>
+            <Button
+              onClick={handleGeneratePDF}
+              data-testid="generate-confirmation-pdf"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider rounded-2xl shadow-lg"
+            >
+              <FileText size={16} className="mr-2" />
+              Generate Return Confirmation PDF
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="space-y-6">
