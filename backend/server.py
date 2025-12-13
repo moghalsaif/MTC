@@ -12,6 +12,14 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from passlib.context import CryptContext
 import jwt
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from io import BytesIO
+from fastapi.responses import StreamingResponse
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -572,6 +580,189 @@ async def create_reservation(reservation_data: ReservationCreate, current_user: 
     return reservation
 
 # Dashboard Stats
+@api_router.get("/projects/{project_id}/packing-list-pdf")
+async def generate_packing_list_pdf(project_id: str, current_user: dict = Depends(get_current_user)):
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    active_checkouts = await db.checkouts.find(
+        {"project_id": project_id, "status": "Active"}, 
+        {"_id": 0}
+    ).to_list(1000)
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#1B1B1B'),
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=colors.HexColor('#71717A'),
+        spaceAfter=20,
+        alignment=TA_CENTER
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor('#1B1B1B'),
+        spaceAfter=12,
+        fontName='Helvetica-Bold'
+    )
+    
+    elements.append(Paragraph("FLIGHT DECK", title_style))
+    elements.append(Paragraph("Equipment Packing List", subtitle_style))
+    elements.append(Spacer(1, 0.2 * inch))
+    
+    elements.append(Paragraph("PROJECT DETAILS", heading_style))
+    
+    project_data = [
+        ['Project Name:', project['name']],
+        ['Location:', project.get('location', 'N/A')],
+        ['Start Date:', datetime.fromisoformat(project['start_date']).strftime('%B %d, %Y') if project.get('start_date') else 'N/A'],
+        ['End Date:', datetime.fromisoformat(project['end_date']).strftime('%B %d, %Y') if project.get('end_date') else 'N/A'],
+        ['Project Owner:', project.get('owner', 'N/A')],
+        ['Status:', project['status']],
+        ['Generated:', datetime.now(timezone.utc).strftime('%B %d, %Y at %I:%M %p UTC')]
+    ]
+    
+    project_table = Table(project_data, colWidths=[2*inch, 4*inch])
+    project_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#F5F5F5')),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#71717A')),
+        ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#1B1B1B')),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E5E5'))
+    ]))
+    
+    elements.append(project_table)
+    elements.append(Spacer(1, 0.4 * inch))
+    
+    elements.append(Paragraph("EQUIPMENT CHECKED OUT", heading_style))
+    
+    if not active_checkouts:
+        elements.append(Paragraph("No equipment currently checked out for this project.", styles['Normal']))
+    else:
+        equipment_data = [['Item Name', 'Category', 'Qty Out', 'Expected Return', 'Notes']]
+        
+        for checkout in active_checkouts:
+            item = await db.items.find_one({"id": checkout['item_id']}, {"_id": 0})
+            expected_return = datetime.fromisoformat(checkout['expected_return'].replace('Z', '+00:00')).strftime('%m/%d/%Y %I:%M %p')
+            
+            equipment_data.append([
+                checkout['item_name'],
+                item['category'] if item else 'N/A',
+                str(checkout['quantity_out']),
+                expected_return,
+                checkout.get('notes', '')[:30] + '...' if checkout.get('notes') and len(checkout.get('notes', '')) > 30 else checkout.get('notes', '')
+            ])
+        
+        equipment_table = Table(equipment_data, colWidths=[2*inch, 1.2*inch, 0.7*inch, 1.3*inch, 1.3*inch])
+        equipment_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F9982E')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (2, 1), (2, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E5E5')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#FAFAFA')])
+        ]))
+        
+        elements.append(equipment_table)
+        elements.append(Spacer(1, 0.3 * inch))
+        
+        total_items = len(active_checkouts)
+        total_quantity = sum(c['quantity_out'] for c in active_checkouts)
+        
+        summary_data = [
+            ['Total Items:', str(total_items)],
+            ['Total Quantity:', str(total_quantity)]
+        ]
+        
+        summary_table = Table(summary_data, colWidths=[2*inch, 1*inch])
+        summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#F5F5F5')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#1B1B1B')),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (1, 0), (1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 11),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E5E5'))
+        ]))
+        
+        elements.append(summary_table)
+    
+    elements.append(Spacer(1, 0.5 * inch))
+    
+    elements.append(Paragraph("HANDOVER SIGNATURES", heading_style))
+    
+    signature_data = [
+        ['Checked Out By:', '_' * 40, 'Date:', '_' * 20],
+        ['', '', '', ''],
+        ['Received By:', '_' * 40, 'Date:', '_' * 20],
+    ]
+    
+    signature_table = Table(signature_data, colWidths=[1.3*inch, 2.5*inch, 0.7*inch, 1.5*inch])
+    signature_table.setStyle(TableStyle([
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#71717A')),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('TOPPADDING', (0, 0), (-1, -1), 12),
+    ]))
+    
+    elements.append(signature_table)
+    
+    elements.append(Spacer(1, 0.3 * inch))
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.HexColor('#71717A'),
+        alignment=TA_CENTER
+    )
+    elements.append(Paragraph("Generated by Flight Deck Equipment Tracker | Keep this document with equipment at all times", footer_style))
+    
+    doc.build(elements)
+    buffer.seek(0)
+    
+    filename = f"packing_list_{project['name'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
 @api_router.get("/dashboard/stats")
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     items_count = await db.items.count_documents({})
