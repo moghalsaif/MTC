@@ -72,6 +72,15 @@ export default function Inventory() {
     setMarkOutDialog(true);
   };
 
+  const handleProjectChange = (projectId) => {
+    const project = projects.find(p => p.id === projectId);
+    setMarkOutForm({
+      ...markOutForm,
+      project_id: projectId,
+      expected_return: project?.end_date || ''
+    });
+  };
+
   const handleMarkOut = async () => {
     if (!markOutForm.project_id || !markOutForm.expected_return || markOutForm.quantity < 1) {
       toast.error('Please fill all required fields');
@@ -261,13 +270,16 @@ export default function Inventory() {
             </div>
             <div>
               <Label className="text-white text-sm mb-2 block">Project / Shoot *</Label>
-              <Select value={markOutForm.project_id} onValueChange={(val) => setMarkOutForm({...markOutForm, project_id: val})}>
+              <Select value={markOutForm.project_id} onValueChange={handleProjectChange}>
                 <SelectTrigger data-testid="project-select" className="bg-[#1B1B1B] border-[#3F3F46] text-white h-12">
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#27272A] border-[#3F3F46]">
                   {projects.map(proj => (
-                    <SelectItem key={proj.id} value={proj.id}>{proj.name}</SelectItem>
+                    <SelectItem key={proj.id} value={proj.id}>
+                      {proj.name}
+                      {proj.end_date && <span className="text-[#71717A] ml-2 text-xs">→ {new Date(proj.end_date).toLocaleDateString()}</span>}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -285,7 +297,12 @@ export default function Inventory() {
               />
             </div>
             <div>
-              <Label className="text-white text-sm mb-2 block">Expected Return Date *</Label>
+              <Label className="text-white text-sm mb-2 block">
+                Expected Return Date * 
+                {markOutForm.project_id && projects.find(p => p.id === markOutForm.project_id)?.end_date && (
+                  <span className="text-[#F9982E] text-xs ml-2">(Auto-filled from project)</span>
+                )}
+              </Label>
               <Input
                 type="datetime-local"
                 data-testid="return-date-input"
