@@ -96,15 +96,6 @@ export default function Dashboard() {
       testId: 'stat-lost'
     },
     {
-      title: 'Low Stock Items',
-      value: stats?.low_stock_items?.length || 0,
-      icon: TrendingDown,
-      color: 'text-[#F59E0B]',
-      bgColor: 'bg-amber-950/30',
-      borderColor: 'border-amber-900',
-      action: () => navigate('/inventory'),
-      testId: 'stat-low-stock'
-    },
     {
       title: 'Total Items',
       value: stats?.total_items || 0,
@@ -198,16 +189,6 @@ export default function Dashboard() {
         <div className="bg-[#27272A] border border-[#F59E0B] rounded-2xl p-6" data-testid="low-stock-section">
           <div className="flex items-center space-x-3 mb-4">
             <TrendingDown className="text-[#F59E0B]" size={24} />
-            <h2 className="font-heading text-2xl font-bold text-white">LOW STOCK ALERT</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {stats.low_stock_items.map((item) => (
-              <div
-                key={item.id}
-                data-testid={`low-stock-item-${item.id}`}
-                className="bg-[#1B1B1B] border border-[#3F3F46] rounded-2xl p-4"
-              >
-                <div className="text-white font-medium mb-1">{item.name}</div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#A1A1AA]">{item.category}</span>
                   <span className="font-data text-[#F59E0B] font-bold">
