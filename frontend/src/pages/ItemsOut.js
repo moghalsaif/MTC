@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { PackageOpen, AlertTriangle } from 'lucide-react';
+import { PackageOpen, AlertTriangle, FileText } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
@@ -110,11 +110,36 @@ export default function ItemsOut() {
 
   const groupedByProject = checkouts.reduce((acc, checkout) => {
     if (!acc[checkout.project_name]) {
-      acc[checkout.project_name] = [];
+      acc[checkout.project_name] = {
+        project_id: checkout.project_id,
+        checkouts: []
+      };
     }
-    acc[checkout.project_name].push(checkout);
+    acc[checkout.project_name].checkouts.push(checkout);
     return acc;
   }, {});
+
+  const handleGeneratePDF = async (projectId, projectName) => {
+    try {
+      toast.info('Generating packing list...');
+      const response = await axios.get(`${API}/projects/${projectId}/packing-list-pdf`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `packing_list_${projectName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      toast.success('Packing list downloaded');
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+      toast.error('Failed to generate packing list');
+    }
+  };
 
   if (loading) {
     return (
@@ -141,14 +166,24 @@ export default function ItemsOut() {
         </div>
       ) : (
         <div className="space-y-6">
-          {Object.entries(groupedByProject).map(([projectName, projectCheckouts]) => (
+          {Object.entries(groupedByProject).map(([projectName, projectData]) => (
             <div key={projectName} className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-6" data-testid={`project-group-${projectName}`}>
               <div className="flex items-center justify-between mb-4 pb-4 border-b border-[#3F3F46]">
-                <h2 className="font-heading text-2xl font-bold text-white">{projectName}</h2>
-                <div className="text-sm text-[#A1A1AA]">{projectCheckouts.length} item(s)</div>
+                <div className="flex-1">
+                  <h2 className="font-heading text-2xl font-bold text-white">{projectName}</h2>
+                  <div className="text-sm text-[#A1A1AA] mt-1">{projectData.checkouts.length} item(s)</div>
+                </div>
+                <Button
+                  onClick={() => handleGeneratePDF(projectData.project_id, projectName)}
+                  data-testid={`generate-pdf-${projectName}`}
+                  className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
+                >
+                  <FileText size={16} className="mr-2" />
+                  Generate Packing List
+                </Button>
               </div>
               <div className="space-y-3">
-                {projectCheckouts.map((checkout) => (
+                {projectData.checkouts.map((checkout) => (
                   <div
                     key={checkout.id}
                     data-testid={`checkout-${checkout.id}`}
