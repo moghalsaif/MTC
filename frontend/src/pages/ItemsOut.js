@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { PackageOpen, AlertTriangle, FileText, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { PackageOpen, AlertTriangle, FileText, Clock, CheckCircle2, XCircle, AlertCircle, ArrowRightLeft, Minus, Plus } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -13,6 +16,19 @@ export default function ItemsOut() {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [checkouts, setCheckouts] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Partial mark-in state
+  const [markInDialog, setMarkInDialog] = useState(false);
+  const [selectedCheckout, setSelectedCheckout] = useState(null);
+  const [markInQuantity, setMarkInQuantity] = useState(1);
+  const [markInCondition, setMarkInCondition] = useState('good');
+  
+  // Transfer dialog state
+  const [transferDialog, setTransferDialog] = useState(false);
+  const [transferCheckout, setTransferCheckout] = useState(null);
+  const [transferTargetProject, setTransferTargetProject] = useState('');
+  const [transferQuantity, setTransferQuantity] = useState(1);
+  const [transferType, setTransferType] = useState('full');
 
   useEffect(() => {
     fetchProjects();
@@ -48,11 +64,13 @@ export default function ItemsOut() {
     }
   };
 
+  // Quick mark-in for full quantity
   const handleQuickMarkIn = async (checkoutId, condition) => {
     try {
       const response = await axios.post(`${API}/checkouts/quick-mark-in`, {
         checkout_id: checkoutId,
-        condition: condition
+        condition: condition,
+        quantity_returned: null // Returns all
       });
       
       const duration = response.data.packing_duration_minutes;
@@ -66,6 +84,77 @@ export default function ItemsOut() {
     } catch (error) {
       console.error('Failed to mark in:', error);
       toast.error(error.response?.data?.detail || 'Failed to mark in item');
+    }
+  };
+
+  // Open partial mark-in dialog
+  const openPartialMarkIn = (checkout) => {
+    setSelectedCheckout(checkout);
+    const remaining = checkout.quantity_out - (checkout.quantity_returned || 0);
+    setMarkInQuantity(remaining);
+    setMarkInCondition('good');
+    setMarkInDialog(true);
+  };
+
+  // Handle partial mark-in
+  const handlePartialMarkIn = async () => {
+    if (!selectedCheckout) return;
+    
+    try {
+      const response = await axios.post(`${API}/checkouts/quick-mark-in`, {
+        checkout_id: selectedCheckout.id,
+        condition: markInCondition,
+        quantity_returned: markInQuantity
+      });
+      
+      if (response.data.status === 'Completed') {
+        toast.success(`All ${markInQuantity} item(s) marked in!`);
+      } else {
+        toast.success(`${markInQuantity} item(s) marked in. ${response.data.remaining} remaining.`);
+      }
+      
+      setMarkInDialog(false);
+      fetchCheckoutsForProject(selectedProjectId);
+    } catch (error) {
+      console.error('Failed to mark in:', error);
+      toast.error(error.response?.data?.detail || 'Failed to mark in item');
+    }
+  };
+
+  // Open transfer dialog
+  const openTransferDialog = (checkout) => {
+    setTransferCheckout(checkout);
+    const remaining = checkout.quantity_out - (checkout.quantity_returned || 0);
+    setTransferQuantity(remaining);
+    setTransferTargetProject('');
+    setTransferType('full');
+    setTransferDialog(true);
+  };
+
+  // Handle transfer
+  const handleTransfer = async () => {
+    if (!transferCheckout || !transferTargetProject) {
+      toast.error('Please select a target project');
+      return;
+    }
+    
+    const qty = transferType === 'full' 
+      ? transferCheckout.quantity_out - (transferCheckout.quantity_returned || 0)
+      : transferQuantity;
+    
+    try {
+      const response = await axios.post(`${API}/checkouts/transfer`, {
+        checkout_id: transferCheckout.id,
+        target_project_id: transferTargetProject,
+        quantity_to_transfer: qty
+      });
+      
+      toast.success(response.data.message);
+      setTransferDialog(false);
+      fetchCheckoutsForProject(selectedProjectId);
+    } catch (error) {
+      console.error('Failed to transfer:', error);
+      toast.error(error.response?.data?.detail || 'Failed to transfer equipment');
     }
   };
 
@@ -110,9 +199,16 @@ export default function ItemsOut() {
     return `${hours}h ${mins}m`;
   };
 
+  const getRemainingQty = (checkout) => {
+    return checkout.quantity_out - (checkout.quantity_returned || 0);
+  };
+
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const isPacking = checkouts.length > 0 && checkouts[0]?.packing_start_time;
   const elapsedTime = isPacking ? getElapsedTime(checkouts[0].packing_start_time) : null;
+  
+  // Filter out other projects for transfer (exclude current project)
+  const otherProjects = projects.filter(p => p.id !== selectedProjectId);
 
   if (loading) {
     return (
@@ -210,84 +306,320 @@ export default function ItemsOut() {
             )}
 
             <div className="space-y-3">
-              {checkouts.map((checkout) => (
-                <div
-                  key={checkout.id}
-                  data-testid={`checkout-${checkout.id}`}
-                  className={`bg-[#1B1B1B] border rounded-2xl p-5 ${
-                    isOverdue(checkout.expected_return) 
-                      ? 'border-[#EF4444]' 
-                      : 'border-[#3F3F46]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="text-white font-f1 text-lg">{checkout.item_name}</div>
-                        {isOverdue(checkout.expected_return) && (
-                          <span className="bg-red-950/30 text-red-400 border-red-900 border px-2 py-1 rounded-2xl text-xs font-mono uppercase tracking-widest flex items-center space-x-1">
-                            <AlertTriangle size={12} />
-                            <span>OVERDUE</span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Quantity Out</div>
-                          <div className="text-white font-data font-bold text-lg">{checkout.quantity_out}</div>
+              {checkouts.map((checkout) => {
+                const remaining = getRemainingQty(checkout);
+                const hasPartialReturn = (checkout.quantity_returned || 0) > 0;
+                
+                return (
+                  <div
+                    key={checkout.id}
+                    data-testid={`checkout-${checkout.id}`}
+                    className={`bg-[#1B1B1B] border rounded-2xl p-5 ${
+                      isOverdue(checkout.expected_return) 
+                        ? 'border-[#EF4444]' 
+                        : hasPartialReturn
+                        ? 'border-[#F59E0B]'
+                        : 'border-[#3F3F46]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="text-white font-f1 text-lg">{checkout.item_name}</div>
+                          {isOverdue(checkout.expected_return) && (
+                            <span className="bg-red-950/30 text-red-400 border-red-900 border px-2 py-1 rounded-2xl text-xs font-mono uppercase tracking-widest flex items-center space-x-1">
+                              <AlertTriangle size={12} />
+                              <span>OVERDUE</span>
+                            </span>
+                          )}
+                          {hasPartialReturn && (
+                            <span className="bg-orange-950/30 text-orange-400 border-orange-900 border px-2 py-1 rounded-2xl text-xs font-mono uppercase tracking-widest">
+                              PARTIAL RETURN
+                            </span>
+                          )}
                         </div>
-                        <div>
-                          <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Expected Return</div>
-                          <div className={isOverdue(checkout.expected_return) ? 'text-[#EF4444] font-bold' : 'text-white'}>
-                            {new Date(checkout.expected_return).toLocaleDateString()}
+                        <div className="grid grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Qty Out</div>
+                            <div className="text-white font-data font-bold text-lg">{checkout.quantity_out}</div>
+                          </div>
+                          <div>
+                            <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Returned</div>
+                            <div className="text-emerald-400 font-data font-bold text-lg">{checkout.quantity_returned || 0}</div>
+                          </div>
+                          <div>
+                            <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Remaining</div>
+                            <div className={`font-data font-bold text-lg ${remaining > 0 ? 'text-[#F9982E]' : 'text-emerald-400'}`}>
+                              {remaining}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Expected Return</div>
+                            <div className={isOverdue(checkout.expected_return) ? 'text-[#EF4444] font-bold' : 'text-white'}>
+                              {new Date(checkout.expected_return).toLocaleDateString()}
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Notes</div>
-                          <div className="text-white">{checkout.notes || 'None'}</div>
-                        </div>
                       </div>
-                    </div>
 
-                    <div className="ml-6 flex flex-col space-y-2">
-                      <div className="text-xs text-[#71717A] uppercase tracking-wider mb-1">Quick Mark In:</div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleQuickMarkIn(checkout.id, 'good')}
-                          data-testid={`mark-in-good-${checkout.id}`}
-                          className="flex items-center space-x-2 px-4 py-2 bg-[#10B981] hover:bg-[#10B981]/90 text-white rounded-2xl font-bold uppercase tracking-wider text-sm transition-colors shadow-lg"
-                          title="Item returned in good condition"
-                        >
-                          <CheckCircle2 size={16} />
-                          <span>All Good</span>
-                        </button>
-                        <button
-                          onClick={() => handleQuickMarkIn(checkout.id, 'damaged')}
-                          data-testid={`mark-in-damaged-${checkout.id}`}
-                          className="flex items-center space-x-2 px-4 py-2 bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-white rounded-2xl font-bold uppercase tracking-wider text-sm transition-colors shadow-lg"
-                          title="Item has damage - will create issue"
-                        >
-                          <AlertCircle size={16} />
-                          <span>Damaged</span>
-                        </button>
-                        <button
-                          onClick={() => handleQuickMarkIn(checkout.id, 'missing')}
-                          data-testid={`mark-in-missing-${checkout.id}`}
-                          className="flex items-center space-x-2 px-4 py-2 bg-[#EF4444] hover:bg-[#EF4444]/90 text-white rounded-2xl font-bold uppercase tracking-wider text-sm transition-colors shadow-lg"
-                          title="Item not returned - will mark as lost"
-                        >
-                          <XCircle size={16} />
-                          <span>Missing</span>
-                        </button>
+                      <div className="ml-6 flex flex-col space-y-2">
+                        <div className="text-xs text-[#71717A] uppercase tracking-wider mb-1">Actions:</div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleQuickMarkIn(checkout.id, 'good')}
+                            data-testid={`mark-in-good-${checkout.id}`}
+                            className="flex items-center space-x-2 px-4 py-2 bg-[#10B981] hover:bg-[#10B981]/90 text-white rounded-2xl font-bold uppercase tracking-wider text-sm transition-colors shadow-lg"
+                            title="Mark all remaining as good"
+                          >
+                            <CheckCircle2 size={16} />
+                            <span>All Good</span>
+                          </button>
+                          <button
+                            onClick={() => openPartialMarkIn(checkout)}
+                            data-testid={`mark-in-partial-${checkout.id}`}
+                            className="flex items-center space-x-2 px-4 py-2 bg-[#6366F1] hover:bg-[#6366F1]/90 text-white rounded-2xl font-bold uppercase tracking-wider text-sm transition-colors shadow-lg"
+                            title="Mark specific quantity"
+                          >
+                            <Minus size={16} />
+                            <span>Partial</span>
+                          </button>
+                          <button
+                            onClick={() => openTransferDialog(checkout)}
+                            data-testid={`transfer-${checkout.id}`}
+                            className="flex items-center space-x-2 px-4 py-2 bg-[#8B5CF6] hover:bg-[#8B5CF6]/90 text-white rounded-2xl font-bold uppercase tracking-wider text-sm transition-colors shadow-lg"
+                            title="Transfer to another project"
+                          >
+                            <ArrowRightLeft size={16} />
+                            <span>Transfer</span>
+                          </button>
+                        </div>
+                        <div className="flex space-x-2 mt-1">
+                          <button
+                            onClick={() => handleQuickMarkIn(checkout.id, 'damaged')}
+                            data-testid={`mark-in-damaged-${checkout.id}`}
+                            className="flex items-center space-x-2 px-4 py-2 bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-white rounded-2xl font-bold uppercase tracking-wider text-sm transition-colors shadow-lg"
+                            title="Item has damage - will create issue"
+                          >
+                            <AlertCircle size={16} />
+                            <span>Damaged</span>
+                          </button>
+                          <button
+                            onClick={() => handleQuickMarkIn(checkout.id, 'missing')}
+                            data-testid={`mark-in-missing-${checkout.id}`}
+                            className="flex items-center space-x-2 px-4 py-2 bg-[#EF4444] hover:bg-[#EF4444]/90 text-white rounded-2xl font-bold uppercase tracking-wider text-sm transition-colors shadow-lg"
+                            title="Item not returned - will mark as lost"
+                          >
+                            <XCircle size={16} />
+                            <span>Missing</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
       )}
+
+      {/* Partial Mark-In Dialog */}
+      <Dialog open={markInDialog} onOpenChange={setMarkInDialog}>
+        <DialogContent className="bg-[#27272A] border-[#3F3F46] text-white max-w-md" data-testid="partial-mark-in-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-2xl font-bold">
+              PARTIAL MARK IN
+            </DialogTitle>
+          </DialogHeader>
+          {selectedCheckout && (
+            <div className="space-y-4 py-4">
+              <div className="bg-[#1B1B1B] rounded-xl p-4">
+                <div className="text-white font-f1 text-lg mb-2">{selectedCheckout.item_name}</div>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <div className="text-[#71717A] text-xs">Out</div>
+                    <div className="text-white font-bold">{selectedCheckout.quantity_out}</div>
+                  </div>
+                  <div>
+                    <div className="text-[#71717A] text-xs">Returned</div>
+                    <div className="text-emerald-400 font-bold">{selectedCheckout.quantity_returned || 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-[#71717A] text-xs">Remaining</div>
+                    <div className="text-[#F9982E] font-bold">{getRemainingQty(selectedCheckout)}</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-white text-sm mb-2 block">Quantity to Return</Label>
+                <div className="flex items-center space-x-3">
+                  <Button
+                    type="button"
+                    onClick={() => setMarkInQuantity(Math.max(1, markInQuantity - 1))}
+                    className="bg-[#3F3F46] hover:bg-[#52525B] text-white rounded-xl h-12 w-12"
+                  >
+                    <Minus size={16} />
+                  </Button>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={getRemainingQty(selectedCheckout)}
+                    value={markInQuantity}
+                    onChange={(e) => setMarkInQuantity(Math.min(getRemainingQty(selectedCheckout), Math.max(1, parseInt(e.target.value) || 1)))}
+                    className="bg-[#1B1B1B] border-[#3F3F46] text-white h-12 text-center font-bold text-xl"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => setMarkInQuantity(Math.min(getRemainingQty(selectedCheckout), markInQuantity + 1))}
+                    className="bg-[#3F3F46] hover:bg-[#52525B] text-white rounded-xl h-12 w-12"
+                  >
+                    <Plus size={16} />
+                  </Button>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-white text-sm mb-2 block">Condition</Label>
+                <Select value={markInCondition} onValueChange={setMarkInCondition}>
+                  <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] text-white h-12">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#27272A] border-[#3F3F46]">
+                    <SelectItem value="good">✓ Good Condition</SelectItem>
+                    <SelectItem value="damaged">⚠ Damaged (Creates Issue)</SelectItem>
+                    <SelectItem value="missing">✕ Missing (Marks as Lost)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={() => setMarkInDialog(false)}
+              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-2xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePartialMarkIn}
+              className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold uppercase tracking-wider rounded-2xl"
+            >
+              Mark In {markInQuantity} Item(s)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer Dialog */}
+      <Dialog open={transferDialog} onOpenChange={setTransferDialog}>
+        <DialogContent className="bg-[#27272A] border-[#3F3F46] text-white max-w-md" data-testid="transfer-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-2xl font-bold flex items-center space-x-2">
+              <ArrowRightLeft size={24} />
+              <span>TRANSFER EQUIPMENT</span>
+            </DialogTitle>
+          </DialogHeader>
+          {transferCheckout && (
+            <div className="space-y-4 py-4">
+              <div className="bg-[#1B1B1B] rounded-xl p-4">
+                <div className="text-white font-f1 text-lg mb-2">{transferCheckout.item_name}</div>
+                <div className="text-sm text-[#A1A1AA]">
+                  From: <span className="text-white font-medium">{transferCheckout.project_name}</span>
+                </div>
+                <div className="text-sm text-[#A1A1AA] mt-1">
+                  Available to transfer: <span className="text-[#F9982E] font-bold">{getRemainingQty(transferCheckout)}</span>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-white text-sm mb-2 block">Target Project *</Label>
+                <Select value={transferTargetProject} onValueChange={setTransferTargetProject}>
+                  <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] text-white h-12">
+                    <SelectValue placeholder="Select destination project..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#27272A] border-[#3F3F46]">
+                    {otherProjects.map(project => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label className="text-white text-sm mb-2 block">Transfer Amount</Label>
+                <div className="flex space-x-2 mb-3">
+                  <button
+                    onClick={() => setTransferType('full')}
+                    className={`flex-1 py-2 px-4 rounded-xl font-medium transition-colors ${
+                      transferType === 'full' 
+                        ? 'bg-[#8B5CF6] text-white' 
+                        : 'bg-[#3F3F46] text-[#A1A1AA] hover:bg-[#52525B]'
+                    }`}
+                  >
+                    Full ({getRemainingQty(transferCheckout)})
+                  </button>
+                  <button
+                    onClick={() => setTransferType('partial')}
+                    className={`flex-1 py-2 px-4 rounded-xl font-medium transition-colors ${
+                      transferType === 'partial' 
+                        ? 'bg-[#8B5CF6] text-white' 
+                        : 'bg-[#3F3F46] text-[#A1A1AA] hover:bg-[#52525B]'
+                    }`}
+                  >
+                    Partial
+                  </button>
+                </div>
+                
+                {transferType === 'partial' && (
+                  <div className="flex items-center space-x-3">
+                    <Button
+                      type="button"
+                      onClick={() => setTransferQuantity(Math.max(1, transferQuantity - 1))}
+                      className="bg-[#3F3F46] hover:bg-[#52525B] text-white rounded-xl h-12 w-12"
+                    >
+                      <Minus size={16} />
+                    </Button>
+                    <Input
+                      type="number"
+                      min="1"
+                      max={getRemainingQty(transferCheckout)}
+                      value={transferQuantity}
+                      onChange={(e) => setTransferQuantity(Math.min(getRemainingQty(transferCheckout), Math.max(1, parseInt(e.target.value) || 1)))}
+                      className="bg-[#1B1B1B] border-[#3F3F46] text-white h-12 text-center font-bold text-xl"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => setTransferQuantity(Math.min(getRemainingQty(transferCheckout), transferQuantity + 1))}
+                      className="bg-[#3F3F46] hover:bg-[#52525B] text-white rounded-xl h-12 w-12"
+                    >
+                      <Plus size={16} />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={() => setTransferDialog(false)}
+              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-2xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleTransfer}
+              disabled={!transferTargetProject}
+              className="bg-[#8B5CF6] hover:bg-[#8B5CF6]/90 text-white font-bold uppercase tracking-wider rounded-2xl disabled:opacity-50"
+            >
+              <ArrowRightLeft size={16} className="mr-2" />
+              Transfer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
