@@ -603,6 +603,81 @@ async def get_checkout_history(current_user: dict = Depends(get_current_user)):
     checkouts = await db.checkouts.find({}, {"_id": 0}).sort("checkout_time", -1).to_list(1000)
     return checkouts
 
+# Transfer Equipment between projects
+@api_router.post("/checkouts/transfer")
+async def transfer_equipment(request: TransferEquipmentRequest, current_user: dict = Depends(get_current_user)):
+    # Get the source checkout
+    checkout = await db.checkouts.find_one({"id": request.checkout_id}, {"_id": 0})
+    if not checkout:
+        raise HTTPException(status_code=404, detail="Checkout not found")
+    
+    if checkout["status"] != "Active":
+        raise HTTPException(status_code=400, detail="Can only transfer from active checkouts")
+    
+    # Get target project
+    target_project = await db.projects.find_one({"id": request.target_project_id}, {"_id": 0})
+    if not target_project:
+        raise HTTPException(status_code=404, detail="Target project not found")
+    
+    if request.target_project_id == checkout["project_id"]:
+        raise HTTPException(status_code=400, detail="Cannot transfer to the same project")
+    
+    # Calculate remaining quantity in source checkout
+    remaining_qty = checkout["quantity_out"] - checkout.get("quantity_returned", 0)
+    
+    if request.quantity_to_transfer > remaining_qty:
+        raise HTTPException(status_code=400, detail=f"Cannot transfer more than {remaining_qty} items")
+    
+    if request.quantity_to_transfer < 1:
+        raise HTTPException(status_code=400, detail="Quantity must be at least 1")
+    
+    transfer_time = datetime.now(timezone.utc).isoformat()
+    
+    # Create new checkout for target project with new timestamp
+    new_checkout = Checkout(
+        item_id=checkout["item_id"],
+        item_name=checkout["item_name"],
+        project_id=request.target_project_id,
+        project_name=target_project["name"],
+        quantity_out=request.quantity_to_transfer,
+        quantity_returned=0,
+        checkout_time=transfer_time,
+        expected_return=checkout["expected_return"],
+        packing_start_time=transfer_time,
+        notes=f"Transferred from {checkout['project_name']}"
+    )
+    await db.checkouts.insert_one(new_checkout.model_dump())
+    
+    # Update or complete the source checkout
+    if request.quantity_to_transfer >= remaining_qty:
+        # Full transfer - mark source as completed
+        await db.checkouts.update_one(
+            {"id": request.checkout_id},
+            {"$set": {
+                "status": "Transferred",
+                "return_time": transfer_time,
+                "notes": f"{checkout.get('notes', '')} | Transferred to {target_project['name']}".strip(" |")
+            }}
+        )
+    else:
+        # Partial transfer - reduce quantity in source
+        new_source_qty = checkout["quantity_out"] - request.quantity_to_transfer
+        await db.checkouts.update_one(
+            {"id": request.checkout_id},
+            {"$set": {
+                "quantity_out": new_source_qty,
+                "notes": f"{checkout.get('notes', '')} | Partial transfer to {target_project['name']}".strip(" |")
+            }}
+        )
+    
+    return {
+        "message": f"Successfully transferred {request.quantity_to_transfer} {checkout['item_name']} to {target_project['name']}",
+        "new_checkout_id": new_checkout.id,
+        "quantity_transferred": request.quantity_to_transfer,
+        "source_project": checkout["project_name"],
+        "target_project": target_project["name"]
+    }
+
 # Issue Routes
 @api_router.get("/issues", response_model=List[Issue])
 async def get_issues(current_user: dict = Depends(get_current_user)):
