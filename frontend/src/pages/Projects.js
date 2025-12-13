@@ -131,10 +131,20 @@ export default function Projects() {
               className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-6 hover:border-[#F9982E] transition-colors"
             >
               <div className="flex items-start justify-between mb-4">
-                <h3 className="text-white font-heading text-xl font-bold">{project.name}</h3>
-                <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-sm border ${getStatusBadge(project.status)}`}>
-                  {project.status}
-                </span>
+                <div className="flex-1">
+                  <h3 className="text-white font-heading text-xl font-bold mb-2">{project.name}</h3>
+                  <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-sm border ${getStatusBadge(project.status)}`}>
+                    {project.status}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleDeleteProject(project.id)}
+                  data-testid={`delete-project-${project.id}`}
+                  className="p-2 text-[#EF4444] hover:bg-[#EF4444]/10 rounded-sm transition-colors"
+                  title="Delete project"
+                >
+                  <Trash2 size={18} />
+                </button>
               </div>
               <div className="space-y-2 text-sm">
                 {project.location && (
@@ -143,22 +153,22 @@ export default function Projects() {
                     <span className="text-white ml-2">{project.location}</span>
                   </div>
                 )}
-                {project.shoot_dates && (
+                {project.start_date && (
                   <div>
-                    <span className="text-[#71717A]">Shoot Dates:</span>
-                    <span className="text-white ml-2">{project.shoot_dates}</span>
+                    <span className="text-[#71717A]">Start Date:</span>
+                    <span className="text-white ml-2">{new Date(project.start_date).toLocaleDateString()}</span>
+                  </div>
+                )}
+                {project.end_date && (
+                  <div>
+                    <span className="text-[#71717A]">End Date:</span>
+                    <span className="text-white ml-2">{new Date(project.end_date).toLocaleDateString()}</span>
                   </div>
                 )}
                 {project.owner && (
                   <div>
                     <span className="text-[#71717A]">Owner:</span>
                     <span className="text-white ml-2">{project.owner}</span>
-                  </div>
-                )}
-                {project.expected_return && (
-                  <div>
-                    <span className="text-[#71717A]">Expected Return:</span>
-                    <span className="text-white ml-2">{new Date(project.expected_return).toLocaleDateString()}</span>
                   </div>
                 )}
               </div>
