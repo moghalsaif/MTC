@@ -14,7 +14,8 @@ const API = `${BACKEND_URL}/api`;
 export default function ItemsOut() {
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
-  const [checkouts, setCheckouts] = useState([]);
+  const [checkouts, setCheckouts] = useState([]); // Active checkouts for mark-in
+  const [allProjectCheckouts, setAllProjectCheckouts] = useState([]); // ALL checkouts (for PDF)
   const [loading, setLoading] = useState(true);
   
   // Partial mark-in state
@@ -55,9 +56,14 @@ export default function ItemsOut() {
 
   const fetchCheckoutsForProject = async (projectId) => {
     try {
-      const response = await axios.get(`${API}/checkouts/active`);
-      const projectCheckouts = response.data.filter(c => c.project_id === projectId);
-      setCheckouts(projectCheckouts);
+      // Fetch active checkouts for mark-in actions
+      const activeResponse = await axios.get(`${API}/checkouts/active`);
+      const activeProjectCheckouts = activeResponse.data.filter(c => c.project_id === projectId);
+      setCheckouts(activeProjectCheckouts);
+      
+      // Fetch ALL checkouts for PDF generation (including completed)
+      const allResponse = await axios.get(`${API}/checkouts/project/${projectId}`);
+      setAllProjectCheckouts(allResponse.data);
     } catch (error) {
       console.error('Failed to fetch checkouts:', error);
       toast.error('Failed to load items for this project');
