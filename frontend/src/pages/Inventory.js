@@ -237,7 +237,7 @@ export default function Inventory() {
             <tbody>
               {filteredItems.map((item) => (
                 <tr key={item.id} data-testid={`item-row-${item.id}`} className="border-b border-[#3F3F46] hover:bg-[#1B1B1B] transition-colors">
-                  <td className="py-4 px-4 text-white font-medium">{item.name}</td>
+                  <td className="py-4 px-4 text-white font-f1 text-lg">{item.name}</td>
                   <td className="py-4 px-4 text-[#A1A1AA]">{item.category}</td>
                   <td className="py-4 px-4 text-center font-data text-white font-bold">{item.quantity_available}</td>
                   <td className="py-4 px-4 text-center font-data text-[#F9982E] font-bold">{item.quantity_out}</td>
