@@ -158,6 +158,12 @@ class StartPackingRequest(BaseModel):
 class QuickMarkInRequest(BaseModel):
     checkout_id: str
     condition: str
+    quantity_returned: Optional[int] = None  # If None, returns all
+
+class TransferEquipmentRequest(BaseModel):
+    checkout_id: str
+    target_project_id: str
+    quantity_to_transfer: int  # Can be partial or full
 
 class Checkout(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
