@@ -116,19 +116,19 @@ class Project(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     location: Optional[str] = None
-    shoot_dates: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
     owner: Optional[str] = None
     status: str = "Planning"
-    expected_return: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class ProjectCreate(BaseModel):
     name: str
     location: Optional[str] = None
-    shoot_dates: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
     owner: Optional[str] = None
     status: Optional[str] = "Planning"
-    expected_return: Optional[str] = None
 
 class MarkOutRequest(BaseModel):
     item_id: str
@@ -333,6 +333,17 @@ async def get_project(project_id: str, current_user: dict = Depends(get_current_
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
+
+@api_router.delete("/projects/{project_id}")
+async def delete_project(project_id: str, current_user: dict = Depends(get_current_user)):
+    active_checkouts = await db.checkouts.count_documents({"project_id": project_id, "status": "Active"})
+    if active_checkouts > 0:
+        raise HTTPException(status_code=400, detail="Cannot delete project with active checkouts")
+    
+    result = await db.projects.delete_one({"id": project_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {"message": "Project deleted successfully"}
 
 # Mark Out
 @api_router.post("/checkouts/mark-out")
