@@ -74,10 +74,17 @@ export default function Inventory() {
 
   const handleProjectChange = (projectId) => {
     const project = projects.find(p => p.id === projectId);
+    let expectedReturn = '';
+    
+    if (project?.end_date) {
+      // Convert YYYY-MM-DD to datetime-local format (YYYY-MM-DDTHH:MM)
+      expectedReturn = `${project.end_date}T18:00`;
+    }
+    
     setMarkOutForm({
       ...markOutForm,
       project_id: projectId,
-      expected_return: project?.end_date || ''
+      expected_return: expectedReturn
     });
   };
 
