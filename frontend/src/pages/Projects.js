@@ -131,7 +131,7 @@ export default function Projects() {
         <Button
           onClick={() => setAddProjectDialog(true)}
           data-testid="add-project-button"
-          className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
+          className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl"
         >
           <Plus size={18} className="mr-2" />
           New Project
@@ -139,7 +139,7 @@ export default function Projects() {
       </div>
 
       {projects.length === 0 ? (
-        <div className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-12 text-center" data-testid="no-projects">
+        <div className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-12 text-center" data-testid="no-projects">
           <FolderKanban size={48} className="mx-auto text-[#71717A] mb-4" />
           <div className="text-white text-lg font-medium mb-2">No projects yet</div>
           <div className="text-[#A1A1AA]">Create your first project to start tracking equipment</div>
@@ -150,12 +150,12 @@ export default function Projects() {
             <div
               key={project.id}
               data-testid={`project-card-${project.id}`}
-              className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-6 hover:border-[#F9982E] transition-colors"
+              className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-6 hover:border-[#F9982E] transition-colors"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <h3 className="text-white font-heading text-xl font-bold mb-2">{project.name}</h3>
-                  <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-sm border ${getStatusBadge(project.status)}`}>
+                  <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-2xl border ${getStatusBadge(project.status)}`}>
                     {project.status}
                   </span>
                 </div>
@@ -163,7 +163,7 @@ export default function Projects() {
                   <button
                     onClick={() => handleGeneratePDF(project)}
                     data-testid={`generate-pdf-${project.id}`}
-                    className="p-2 text-[#F9982E] hover:bg-[#F9982E]/10 rounded-sm transition-colors"
+                    className="p-2 text-[#F9982E] hover:bg-[#F9982E]/10 rounded-2xl transition-colors"
                     title="Generate packing list PDF"
                   >
                     <FileText size={18} />
@@ -171,7 +171,7 @@ export default function Projects() {
                   <button
                     onClick={() => handleDeleteProject(project.id)}
                     data-testid={`delete-project-${project.id}`}
-                    className="p-2 text-[#EF4444] hover:bg-[#EF4444]/10 rounded-sm transition-colors"
+                    className="p-2 text-[#EF4444] hover:bg-[#EF4444]/10 rounded-2xl transition-colors"
                     title="Delete project"
                   >
                     <Trash2 size={18} />
@@ -280,14 +280,14 @@ export default function Projects() {
             <Button
               onClick={() => setAddProjectDialog(false)}
               data-testid="cancel-project"
-              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-sm"
+              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-2xl"
             >
               Cancel
             </Button>
             <Button
               onClick={handleAddProject}
               data-testid="confirm-project"
-              className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
+              className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl"
             >
               Create Project
             </Button>

@@ -147,7 +147,7 @@ export default function ItemsOut() {
       </div>
 
       {Object.keys(groupedByProject).length === 0 ? (
-        <div className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-12 text-center" data-testid="no-items-out">
+        <div className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-12 text-center" data-testid="no-items-out">
           <PackageOpen size={48} className="mx-auto text-[#71717A] mb-4" />
           <div className="text-white text-lg font-medium mb-2">No items currently out</div>
           <div className="text-[#A1A1AA]">All equipment is in the studio</div>
@@ -161,7 +161,7 @@ export default function ItemsOut() {
               getElapsedTime(firstCheckout.packing_start_time) : null;
             
             return (
-              <div key={projectName} className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-6" data-testid={`project-group-${projectName}`}>
+              <div key={projectName} className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-6" data-testid={`project-group-${projectName}`}>
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#3F3F46]">
                   <div className="flex-1">
                     <h2 className="font-heading text-2xl font-bold text-white mb-2">{projectName}</h2>
@@ -180,20 +180,20 @@ export default function ItemsOut() {
                       <Button
                         onClick={() => handleStartPacking(projectData.project_id)}
                         data-testid={`start-packing-${projectName}`}
-                        className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold uppercase tracking-wider rounded-sm"
+                        className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold uppercase tracking-wider rounded-2xl"
                       >
                         <Play size={16} className="mr-2" />
                         Start Packing
                       </Button>
                     ) : (
-                      <div className="bg-emerald-950/30 border border-emerald-900 px-4 py-2 rounded-sm">
+                      <div className="bg-emerald-950/30 border border-emerald-900 px-4 py-2 rounded-2xl">
                         <span className="text-emerald-400 font-data text-sm">PACKING IN PROGRESS</span>
                       </div>
                     )}
                     <Button
                       onClick={() => handleGeneratePDF(projectData.project_id, projectName)}
                       data-testid={`generate-pdf-${projectName}`}
-                      className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
+                      className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl"
                     >
                       <FileText size={16} className="mr-2" />
                       Packing List PDF
@@ -202,7 +202,7 @@ export default function ItemsOut() {
                 </div>
 
                 {!isPacking && (
-                  <div className="bg-blue-950/30 border border-blue-900 rounded-sm p-4 mb-4">
+                  <div className="bg-blue-950/30 border border-blue-900 rounded-2xl p-4 mb-4">
                     <div className="flex items-start space-x-3">
                       <AlertCircle className="text-blue-400 mt-0.5" size={20} />
                       <div className="text-sm text-blue-300">
@@ -217,7 +217,7 @@ export default function ItemsOut() {
                     <div
                       key={checkout.id}
                       data-testid={`checkout-${checkout.id}`}
-                      className={`bg-[#1B1B1B] border rounded-sm p-5 ${
+                      className={`bg-[#1B1B1B] border rounded-2xl p-5 ${
                         isOverdue(checkout.expected_return) ? 'border-[#EF4444]' : 'border-[#3F3F46]'
                       }`}
                     >
@@ -226,7 +226,7 @@ export default function ItemsOut() {
                           <div className="flex items-center space-x-3 mb-3">
                             <div className="text-white font-medium text-lg">{checkout.item_name}</div>
                             {isOverdue(checkout.expected_return) && (
-                              <span className="bg-red-950/30 text-red-400 border-red-900 border px-2 py-1 rounded-sm text-xs font-mono uppercase tracking-widest flex items-center space-x-1">
+                              <span className="bg-red-950/30 text-red-400 border-red-900 border px-2 py-1 rounded-2xl text-xs font-mono uppercase tracking-widest flex items-center space-x-1">
                                 <AlertTriangle size={12} />
                                 <span>OVERDUE</span>
                               </span>
@@ -257,7 +257,7 @@ export default function ItemsOut() {
                               <button
                                 onClick={() => handleQuickMarkIn(checkout.id, 'good')}
                                 data-testid={`mark-in-good-${checkout.id}`}
-                                className="flex items-center space-x-2 px-4 py-2 bg-[#10B981] hover:bg-[#10B981]/90 text-white rounded-sm font-bold uppercase tracking-wider text-sm transition-colors"
+                                className="flex items-center space-x-2 px-4 py-2 bg-[#10B981] hover:bg-[#10B981]/90 text-white rounded-2xl font-bold uppercase tracking-wider text-sm transition-colors"
                                 title="Item returned in good condition"
                               >
                                 <CheckCircle2 size={16} />
@@ -266,7 +266,7 @@ export default function ItemsOut() {
                               <button
                                 onClick={() => handleQuickMarkIn(checkout.id, 'damaged')}
                                 data-testid={`mark-in-damaged-${checkout.id}`}
-                                className="flex items-center space-x-2 px-4 py-2 bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-white rounded-sm font-bold uppercase tracking-wider text-sm transition-colors"
+                                className="flex items-center space-x-2 px-4 py-2 bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-white rounded-2xl font-bold uppercase tracking-wider text-sm transition-colors"
                                 title="Item has damage - will create issue"
                               >
                                 <AlertCircle size={16} />
@@ -275,7 +275,7 @@ export default function ItemsOut() {
                               <button
                                 onClick={() => handleQuickMarkIn(checkout.id, 'missing')}
                                 data-testid={`mark-in-missing-${checkout.id}`}
-                                className="flex items-center space-x-2 px-4 py-2 bg-[#EF4444] hover:bg-[#EF4444]/90 text-white rounded-sm font-bold uppercase tracking-wider text-sm transition-colors"
+                                className="flex items-center space-x-2 px-4 py-2 bg-[#EF4444] hover:bg-[#EF4444]/90 text-white rounded-2xl font-bold uppercase tracking-wider text-sm transition-colors"
                                 title="Item not returned - will mark as lost"
                               >
                                 <XCircle size={16} />
@@ -293,19 +293,19 @@ export default function ItemsOut() {
                   <div className="mt-6 pt-6 border-t border-[#3F3F46]">
                     <h3 className="text-white font-heading text-lg font-bold mb-4">PACKING PERFORMANCE</h3>
                     <div className="grid grid-cols-4 gap-4">
-                      <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-sm p-4">
+                      <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-2xl p-4">
                         <div className="text-[#71717A] text-xs uppercase tracking-wider mb-2">Total Time</div>
                         <div className="text-white font-data font-bold text-2xl">
                           {Math.floor(packingStats[projectData.project_id].total_time_minutes / 60)}h {packingStats[projectData.project_id].total_time_minutes % 60}m
                         </div>
                       </div>
-                      <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-sm p-4">
+                      <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-2xl p-4">
                         <div className="text-[#71717A] text-xs uppercase tracking-wider mb-2">Average per Item</div>
                         <div className="text-white font-data font-bold text-2xl">
                           {packingStats[projectData.project_id].average_time_minutes}m
                         </div>
                       </div>
-                      <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-sm p-4">
+                      <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-2xl p-4">
                         <div className="text-[#71717A] text-xs uppercase tracking-wider mb-2">Fastest</div>
                         <div className="text-emerald-400 font-data font-bold text-sm">
                           {packingStats[projectData.project_id].fastest_item?.time_minutes}m
@@ -314,7 +314,7 @@ export default function ItemsOut() {
                           {packingStats[projectData.project_id].fastest_item?.name}
                         </div>
                       </div>
-                      <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-sm p-4">
+                      <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-2xl p-4">
                         <div className="text-[#71717A] text-xs uppercase tracking-wider mb-2">Slowest</div>
                         <div className="text-orange-400 font-data font-bold text-sm">
                           {packingStats[projectData.project_id].slowest_item?.time_minutes}m

@@ -178,14 +178,14 @@ export default function Inventory() {
         <Button
           onClick={() => setAddItemDialog(true)}
           data-testid="add-item-button"
-          className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
+          className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl"
         >
           <Plus size={18} className="mr-2" />
           Add Item
         </Button>
       </div>
 
-      <div className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-6">
+      <div className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="relative md:col-span-2">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#71717A]" size={18} />
@@ -243,7 +243,7 @@ export default function Inventory() {
                   <td className="py-4 px-4 text-center font-data text-[#F9982E] font-bold">{item.quantity_out}</td>
                   <td className="py-4 px-4 text-center font-data text-[#A1A1AA]">{item.total_quantity}</td>
                   <td className="py-4 px-4 text-center">
-                    <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-sm border ${getStatusBadge(item.status)}`}>
+                    <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-2xl border ${getStatusBadge(item.status)}`}>
                       {item.status}
                     </span>
                   </td>
@@ -252,7 +252,7 @@ export default function Inventory() {
                       onClick={() => openMarkOut(item)}
                       data-testid={`mark-out-${item.id}`}
                       disabled={item.quantity_available === 0 || item.status !== 'Available'}
-                      className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Mark Out
                     </Button>
@@ -333,14 +333,14 @@ export default function Inventory() {
             <Button
               onClick={() => setMarkOutDialog(false)}
               data-testid="cancel-mark-out"
-              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-sm"
+              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-2xl"
             >
               Cancel
             </Button>
             <Button
               onClick={handleMarkOut}
               data-testid="confirm-mark-out"
-              className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
+              className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl"
             >
               Confirm Mark Out
             </Button>
@@ -397,14 +397,14 @@ export default function Inventory() {
             <Button
               onClick={() => setAddItemDialog(false)}
               data-testid="cancel-add-item"
-              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-sm"
+              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-2xl"
             >
               Cancel
             </Button>
             <Button
               onClick={handleAddItem}
               data-testid="confirm-add-item"
-              className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
+              className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl"
             >
               Add Item
             </Button>

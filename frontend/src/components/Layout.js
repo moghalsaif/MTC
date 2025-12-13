@@ -75,7 +75,7 @@ export default function Layout() {
                       key={item.path}
                       to={item.path}
                       data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-sm text-sm font-medium transition-colors ${
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-2xl text-sm font-medium transition-colors ${
                         isActive(item.path)
                           ? 'bg-[#F9982E] text-black'
                           : 'text-[#A1A1AA] hover:text-white hover:bg-[#3F3F46]'
@@ -105,7 +105,7 @@ export default function Layout() {
                 <button
                   onClick={logout}
                   data-testid="logout-button"
-                  className="p-2 rounded-sm text-[#A1A1AA] hover:text-white hover:bg-[#3F3F46] transition-colors"
+                  className="p-2 rounded-2xl text-[#A1A1AA] hover:text-white hover:bg-[#3F3F46] transition-colors"
                   title="Logout"
                 >
                   <LogOut size={18} />

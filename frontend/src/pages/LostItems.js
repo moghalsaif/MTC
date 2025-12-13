@@ -59,7 +59,7 @@ export default function LostItems() {
       </div>
 
       {unresolvedItems.length === 0 && recoveredItems.length === 0 ? (
-        <div className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-12 text-center" data-testid="no-lost-items">
+        <div className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-12 text-center" data-testid="no-lost-items">
           <CheckCircle size={48} className="mx-auto text-[#10B981] mb-4" />
           <div className="text-white text-lg font-medium mb-2">No lost items</div>
           <div className="text-[#A1A1AA]">All equipment is accounted for</div>
@@ -73,14 +73,14 @@ export default function LostItems() {
                 <div
                   key={item.id}
                   data-testid={`lost-item-${item.id}`}
-                  className="bg-[#27272A] border border-[#EF4444] rounded-sm p-6"
+                  className="bg-[#27272A] border border-[#EF4444] rounded-2xl p-6"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <PackageX className="text-[#EF4444]" size={20} />
                         <h3 className="text-white font-heading text-xl font-bold">{item.item_name}</h3>
-                        <span className="bg-red-950/30 text-red-400 border-red-900 border font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-sm">
+                        <span className="bg-red-950/30 text-red-400 border-red-900 border font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-2xl">
                           MISSING
                         </span>
                       </div>
@@ -102,7 +102,7 @@ export default function LostItems() {
                     <Button
                       onClick={() => markRecovered(item.id)}
                       data-testid={`mark-recovered-${item.id}`}
-                      className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold uppercase tracking-wider rounded-sm ml-4"
+                      className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold uppercase tracking-wider rounded-2xl ml-4"
                     >
                       <CheckCircle size={16} className="mr-2" />
                       Mark Recovered
@@ -120,12 +120,12 @@ export default function LostItems() {
                 <div
                   key={item.id}
                   data-testid={`recovered-item-${item.id}`}
-                  className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-6 opacity-60"
+                  className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-6 opacity-60"
                 >
                   <div className="flex items-center space-x-3 mb-2">
                     <CheckCircle className="text-[#10B981]" size={20} />
                     <h3 className="text-white font-heading text-xl font-bold">{item.item_name}</h3>
-                    <span className="bg-emerald-950/30 text-emerald-400 border-emerald-900 border font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-sm">
+                    <span className="bg-emerald-950/30 text-emerald-400 border-emerald-900 border font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-2xl">
                       RECOVERED
                     </span>
                   </div>

@@ -114,7 +114,7 @@ export default function Maintenance() {
         <Button
           onClick={() => setAddMaintenanceDialog(true)}
           data-testid="start-maintenance-button"
-          className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
+          className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl"
         >
           <Plus size={18} className="mr-2" />
           Start Maintenance
@@ -122,7 +122,7 @@ export default function Maintenance() {
       </div>
 
       {maintenanceRecords.length === 0 ? (
-        <div className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-12 text-center" data-testid="no-maintenance">
+        <div className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-12 text-center" data-testid="no-maintenance">
           <CheckCircle size={48} className="mx-auto text-[#10B981] mb-4" />
           <div className="text-white text-lg font-medium mb-2">No maintenance records</div>
           <div className="text-[#A1A1AA]">All equipment is in working condition</div>
@@ -136,14 +136,14 @@ export default function Maintenance() {
                 <div
                   key={record.id}
                   data-testid={`maintenance-${record.id}`}
-                  className="bg-[#27272A] border border-[#F59E0B] rounded-sm p-6"
+                  className="bg-[#27272A] border border-[#F59E0B] rounded-2xl p-6"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <Wrench className="text-[#F59E0B]" size={20} />
                         <h3 className="text-white font-heading text-xl font-bold">{record.item_name}</h3>
-                        <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-sm border ${getStatusBadge(record.status)}`}>
+                        <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-2xl border ${getStatusBadge(record.status)}`}>
                           {record.status}
                         </span>
                       </div>
@@ -173,7 +173,7 @@ export default function Maintenance() {
                     <Button
                       onClick={() => completeMaintenance(record.id)}
                       data-testid={`complete-maintenance-${record.id}`}
-                      className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold uppercase tracking-wider rounded-sm ml-4"
+                      className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold uppercase tracking-wider rounded-2xl ml-4"
                     >
                       <CheckCircle size={16} className="mr-2" />
                       Complete
@@ -191,12 +191,12 @@ export default function Maintenance() {
                 <div
                   key={record.id}
                   data-testid={`completed-maintenance-${record.id}`}
-                  className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-6 opacity-60"
+                  className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-6 opacity-60"
                 >
                   <div className="flex items-center space-x-3 mb-2">
                     <CheckCircle className="text-[#10B981]" size={20} />
                     <h3 className="text-white font-heading text-xl font-bold">{record.item_name}</h3>
-                    <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-sm border ${getStatusBadge(record.status)}`}>
+                    <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-2xl border ${getStatusBadge(record.status)}`}>
                       {record.status}
                     </span>
                   </div>
@@ -288,14 +288,14 @@ export default function Maintenance() {
             <Button
               onClick={() => setAddMaintenanceDialog(false)}
               data-testid="cancel-maintenance"
-              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-sm"
+              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-2xl"
             >
               Cancel
             </Button>
             <Button
               onClick={handleAddMaintenance}
               data-testid="confirm-maintenance"
-              className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
+              className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl"
             >
               Start Maintenance
             </Button>

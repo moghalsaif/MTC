@@ -124,7 +124,7 @@ export default function Issues() {
         <Button
           onClick={() => setAddIssueDialog(true)}
           data-testid="report-issue-button"
-          className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
+          className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl"
         >
           <Plus size={18} className="mr-2" />
           Report Issue
@@ -132,7 +132,7 @@ export default function Issues() {
       </div>
 
       {issues.length === 0 ? (
-        <div className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-12 text-center" data-testid="no-issues">
+        <div className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-12 text-center" data-testid="no-issues">
           <CheckCircle size={48} className="mx-auto text-[#10B981] mb-4" />
           <div className="text-white text-lg font-medium mb-2">No issues reported</div>
           <div className="text-[#A1A1AA]">All equipment is in good condition</div>
@@ -143,17 +143,17 @@ export default function Issues() {
             <div
               key={issue.id}
               data-testid={`issue-${issue.id}`}
-              className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-6"
+              className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-6"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
                     <AlertTriangle className="text-[#F59E0B]" size={20} />
                     <h3 className="text-white font-heading text-xl font-bold">{issue.item_name}</h3>
-                    <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-sm border ${getSeverityBadge(issue.severity)}`}>
+                    <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-2xl border ${getSeverityBadge(issue.severity)}`}>
                       {issue.severity}
                     </span>
-                    <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-sm border ${getStatusBadge(issue.status)}`}>
+                    <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-2xl border ${getStatusBadge(issue.status)}`}>
                       {issue.status}
                     </span>
                   </div>
@@ -181,7 +181,7 @@ export default function Issues() {
                   <Button
                     onClick={() => resolveIssue(issue.id)}
                     data-testid={`resolve-issue-${issue.id}`}
-                    className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold uppercase tracking-wider rounded-sm ml-4"
+                    className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold uppercase tracking-wider rounded-2xl ml-4"
                   >
                     <CheckCircle size={16} className="mr-2" />
                     Resolve
@@ -251,14 +251,14 @@ export default function Issues() {
             <Button
               onClick={() => setAddIssueDialog(false)}
               data-testid="cancel-issue"
-              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-sm"
+              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-2xl"
             >
               Cancel
             </Button>
             <Button
               onClick={handleAddIssue}
               data-testid="confirm-issue"
-              className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
+              className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl"
             >
               Report Issue
             </Button>

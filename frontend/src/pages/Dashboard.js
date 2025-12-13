@@ -130,14 +130,14 @@ export default function Dashboard() {
           <button
             onClick={() => navigate('/inventory')}
             data-testid="quick-mark-out-btn"
-            className="px-6 py-3 bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm transition-colors"
+            className="px-6 py-3 bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl transition-colors"
           >
             Mark Out
           </button>
           <button
             onClick={() => navigate('/items-out')}
             data-testid="quick-mark-in-btn"
-            className="px-6 py-3 bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-sm transition-colors font-bold uppercase tracking-wider"
+            className="px-6 py-3 bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-2xl transition-colors font-bold uppercase tracking-wider"
           >
             Mark In
           </button>
@@ -152,11 +152,11 @@ export default function Dashboard() {
               key={card.title}
               onClick={card.action}
               data-testid={card.testId}
-              className={`bg-[#27272A] border ${card.borderColor} rounded-sm p-6 text-left transition-all hover:scale-105 hover:shadow-lg`}
+              className={`bg-[#27272A] border ${card.borderColor} rounded-2xl p-6 text-left transition-all hover:scale-105 hover:shadow-lg`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className={`${card.bgColor} ${card.borderColor} border px-2 py-1 rounded-sm inline-flex items-center mb-3`}>
+                  <div className={`${card.bgColor} ${card.borderColor} border px-2 py-1 rounded-2xl inline-flex items-center mb-3`}>
                     <Icon size={16} className={card.color} />
                   </div>
                   <div className="font-data text-4xl font-bold text-white mb-2">{card.value}</div>
@@ -169,7 +169,7 @@ export default function Dashboard() {
       </div>
 
       {stats?.overdue_items && stats.overdue_items.length > 0 && (
-        <div className="bg-[#27272A] border border-[#EF4444] rounded-sm p-6" data-testid="overdue-section">
+        <div className="bg-[#27272A] border border-[#EF4444] rounded-2xl p-6" data-testid="overdue-section">
           <div className="flex items-center space-x-3 mb-4">
             <AlertTriangle className="text-[#EF4444]" size={24} />
             <h2 className="font-heading text-2xl font-bold text-white">OVERDUE GEAR</h2>
@@ -179,7 +179,7 @@ export default function Dashboard() {
               <div
                 key={checkout.id}
                 data-testid={`overdue-item-${checkout.id}`}
-                className="bg-[#1B1B1B] border border-[#3F3F46] rounded-sm p-4 flex items-center justify-between"
+                className="bg-[#1B1B1B] border border-[#3F3F46] rounded-2xl p-4 flex items-center justify-between"
               >
                 <div>
                   <div className="text-white font-medium">{checkout.item_name}</div>
@@ -195,7 +195,7 @@ export default function Dashboard() {
       )}
 
       {stats?.low_stock_items && stats.low_stock_items.length > 0 && (
-        <div className="bg-[#27272A] border border-[#F59E0B] rounded-sm p-6" data-testid="low-stock-section">
+        <div className="bg-[#27272A] border border-[#F59E0B] rounded-2xl p-6" data-testid="low-stock-section">
           <div className="flex items-center space-x-3 mb-4">
             <TrendingDown className="text-[#F59E0B]" size={24} />
             <h2 className="font-heading text-2xl font-bold text-white">LOW STOCK ALERT</h2>
@@ -205,7 +205,7 @@ export default function Dashboard() {
               <div
                 key={item.id}
                 data-testid={`low-stock-item-${item.id}`}
-                className="bg-[#1B1B1B] border border-[#3F3F46] rounded-sm p-4"
+                className="bg-[#1B1B1B] border border-[#3F3F46] rounded-2xl p-4"
               >
                 <div className="text-white font-medium mb-1">{item.name}</div>
                 <div className="flex items-center justify-between">
