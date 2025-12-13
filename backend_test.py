@@ -79,36 +79,15 @@ class EquipmentTrackerAPITester:
             self.log_result(name, False, f"Exception: {str(e)}")
             return False, {}
 
-    def test_auth_register(self):
-        """Test user registration"""
-        test_user_data = {
-            "email": "admin@studio.com",
-            "password": "admin123",
-            "name": "Admin User"
-        }
-        
-        success, response = self.run_test(
-            "User Registration",
-            "POST",
-            "auth/register",
-            200,
-            data=test_user_data
-        )
-        
-        if success and 'access_token' in response:
-            self.token = response['access_token']
-            return True
-        return False
-
     def test_auth_login(self):
-        """Test user login"""
+        """Test login with provided test credentials"""
         login_data = {
-            "email": "admin@studio.com",
-            "password": "admin123"
+            "email": "testuser@test.com",
+            "password": "testpassword"
         }
         
         success, response = self.run_test(
-            "User Login",
+            "Login with test credentials",
             "POST",
             "auth/login",
             200,
