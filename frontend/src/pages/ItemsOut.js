@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { PackageOpen, AlertTriangle, FileText } from 'lucide-react';
+import { PackageOpen, AlertTriangle, FileText, Clock, CheckCircle2, XCircle, AlertCircle, Play } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
-import { Label } from '../components/ui/label';
-import { Input } from '../components/ui/input';
-import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -14,20 +11,8 @@ const API = `${BACKEND_URL}/api`;
 export default function ItemsOut() {
   const [checkouts, setCheckouts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [markInDialog, setMarkInDialog] = useState(false);
-  const [selectedCheckout, setSelectedCheckout] = useState(null);
-  const [markInForm, setMarkInForm] = useState({
-    quantity_returned: 0,
-    repack_checklist: {
-      all_parts_present: false,
-      batteries_returned: false,
-      no_damage: false,
-      cables_included: false
-    },
-    notes: '',
-    issues: []
-  });
-  const [issueDescription, setIssueDescription] = useState('');
+  const [packingStats, setPackingStats] = useState({});
+  const [packingInProgress, setPackingInProgress] = useState({});
 
   useEffect(() => {
     fetchActiveCheckouts();
@@ -37,6 +22,14 @@ export default function ItemsOut() {
     try {
       const response = await axios.get(`${API}/checkouts/active`);
       setCheckouts(response.data);
+      
+      const inProgress = {};
+      response.data.forEach(checkout => {
+        if (checkout.packing_start_time && !checkout.packing_complete_time) {
+          inProgress[checkout.project_id] = true;
+        }
+      });
+      setPackingInProgress(inProgress);
     } catch (error) {
       console.error('Failed to fetch checkouts:', error);
       toast.error('Failed to load items out');
@@ -45,79 +38,38 @@ export default function ItemsOut() {
     }
   };
 
-  const openMarkIn = (checkout) => {
-    setSelectedCheckout(checkout);
-    setMarkInForm({
-      quantity_returned: checkout.quantity_out,
-      repack_checklist: {
-        all_parts_present: false,
-        batteries_returned: false,
-        no_damage: false,
-        cables_included: false
-      },
-      notes: '',
-      issues: []
-    });
-    setIssueDescription('');
-    setMarkInDialog(true);
-  };
-
-  const addIssue = () => {
-    if (!issueDescription.trim()) return;
-    setMarkInForm({
-      ...markInForm,
-      issues: [...markInForm.issues, issueDescription]
-    });
-    setIssueDescription('');
-  };
-
-  const removeIssue = (index) => {
-    setMarkInForm({
-      ...markInForm,
-      issues: markInForm.issues.filter((_, i) => i !== index)
-    });
-  };
-
-  const handleMarkIn = async () => {
-    if (markInForm.quantity_returned < 0 || markInForm.quantity_returned > selectedCheckout.quantity_out) {
-      toast.error('Invalid quantity returned');
-      return;
-    }
-
+  const handleStartPacking = async (projectId) => {
     try {
-      const response = await axios.post(`${API}/checkouts/mark-in`, {
-        checkout_id: selectedCheckout.id,
-        ...markInForm
+      await axios.post(`${API}/checkouts/start-packing`, { project_id: projectId });
+      toast.success('Packing timer started! Mark items as you pack them.');
+      setPackingInProgress({...packingInProgress, [projectId]: true});
+      fetchActiveCheckouts();
+    } catch (error) {
+      console.error('Failed to start packing:', error);
+      toast.error('Failed to start packing timer');
+    }
+  };
+
+  const handleQuickMarkIn = async (checkoutId, condition) => {
+    try {
+      const response = await axios.post(`${API}/checkouts/quick-mark-in`, {
+        checkout_id: checkoutId,
+        condition: condition
       });
       
-      if (response.data.quantity_missing > 0) {
-        toast.warning(`${response.data.quantity_missing} item(s) marked as lost`);
+      const duration = response.data.packing_duration_minutes;
+      if (duration) {
+        toast.success(`Marked in! Packing time: ${duration} min`);
       } else {
         toast.success('Item marked in successfully');
       }
       
-      setMarkInDialog(false);
       fetchActiveCheckouts();
     } catch (error) {
       console.error('Failed to mark in:', error);
       toast.error(error.response?.data?.detail || 'Failed to mark in item');
     }
   };
-
-  const isOverdue = (expectedReturn) => {
-    return new Date(expectedReturn) < new Date();
-  };
-
-  const groupedByProject = checkouts.reduce((acc, checkout) => {
-    if (!acc[checkout.project_name]) {
-      acc[checkout.project_name] = {
-        project_id: checkout.project_id,
-        checkouts: []
-      };
-    }
-    acc[checkout.project_name].checkouts.push(checkout);
-    return acc;
-  }, {});
 
   const handleGeneratePDF = async (projectId, projectName) => {
     try {
@@ -141,6 +93,42 @@ export default function ItemsOut() {
     }
   };
 
+  const fetchPackingStats = async (projectId) => {
+    try {
+      const response = await axios.get(`${API}/projects/${projectId}/packing-stats`);
+      setPackingStats({...packingStats, [projectId]: response.data});
+    } catch (error) {
+      console.error('Failed to fetch packing stats:', error);
+    }
+  };
+
+  const isOverdue = (expectedReturn) => {
+    return new Date(expectedReturn) < new Date();
+  };
+
+  const groupedByProject = checkouts.reduce((acc, checkout) => {
+    if (!acc[checkout.project_name]) {
+      acc[checkout.project_name] = {
+        project_id: checkout.project_id,
+        checkouts: []
+      };
+    }
+    acc[checkout.project_name].checkouts.push(checkout);
+    return acc;
+  }, {});
+
+  const getElapsedTime = (startTime) => {
+    if (!startTime) return null;
+    const start = new Date(startTime);
+    const now = new Date();
+    const diffMinutes = Math.floor((now - start) / 1000 / 60);
+    
+    if (diffMinutes < 60) return `${diffMinutes}m`;
+    const hours = Math.floor(diffMinutes / 60);
+    const mins = diffMinutes % 60;
+    return `${hours}h ${mins}m`;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -153,9 +141,9 @@ export default function ItemsOut() {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-4xl font-black text-white tracking-tight" data-testid="items-out-title">
-          ITEMS CURRENTLY OUT
+          WRAP-UP CENTER
         </h1>
-        <p className="text-[#A1A1AA] mt-2">{checkouts.length} active checkouts</p>
+        <p className="text-[#A1A1AA] mt-2">{checkouts.length} item(s) to pack and return</p>
       </div>
 
       {Object.keys(groupedByProject).length === 0 ? (
@@ -166,237 +154,183 @@ export default function ItemsOut() {
         </div>
       ) : (
         <div className="space-y-6">
-          {Object.entries(groupedByProject).map(([projectName, projectData]) => (
-            <div key={projectName} className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-6" data-testid={`project-group-${projectName}`}>
-              <div className="flex items-center justify-between mb-4 pb-4 border-b border-[#3F3F46]">
-                <div className="flex-1">
-                  <h2 className="font-heading text-2xl font-bold text-white">{projectName}</h2>
-                  <div className="text-sm text-[#A1A1AA] mt-1">{projectData.checkouts.length} item(s)</div>
-                </div>
-                <Button
-                  onClick={() => handleGeneratePDF(projectData.project_id, projectName)}
-                  data-testid={`generate-pdf-${projectName}`}
-                  className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
-                >
-                  <FileText size={16} className="mr-2" />
-                  Generate Packing List
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {projectData.checkouts.map((checkout) => (
-                  <div
-                    key={checkout.id}
-                    data-testid={`checkout-${checkout.id}`}
-                    className={`bg-[#1B1B1B] border rounded-sm p-4 flex items-center justify-between ${
-                      isOverdue(checkout.expected_return) ? 'border-[#EF4444]' : 'border-[#3F3F46]'
-                    }`}
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="text-white font-medium text-lg">{checkout.item_name}</div>
-                        {isOverdue(checkout.expected_return) && (
-                          <span className="bg-red-950/30 text-red-400 border-red-900 border px-2 py-1 rounded-sm text-xs font-mono uppercase tracking-widest flex items-center space-x-1">
-                            <AlertTriangle size={12} />
-                            <span>OVERDUE</span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Quantity Out</div>
-                          <div className="text-white font-data font-bold">{checkout.quantity_out}</div>
-                        </div>
-                        <div>
-                          <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Checked Out</div>
-                          <div className="text-white">{new Date(checkout.checkout_time).toLocaleDateString()}</div>
-                        </div>
-                        <div>
-                          <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Expected Return</div>
-                          <div className={isOverdue(checkout.expected_return) ? 'text-[#EF4444] font-bold' : 'text-white'}>
-                            {new Date(checkout.expected_return).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Notes</div>
-                          <div className="text-white">{checkout.notes || 'None'}</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <Button
-                        onClick={() => openMarkIn(checkout)}
-                        data-testid={`mark-in-${checkout.id}`}
-                        className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
-                      >
-                        Mark In
-                      </Button>
+          {Object.entries(groupedByProject).map(([projectName, projectData]) => {
+            const isPacking = packingInProgress[projectData.project_id];
+            const firstCheckout = projectData.checkouts[0];
+            const elapsedTime = isPacking && firstCheckout?.packing_start_time ? 
+              getElapsedTime(firstCheckout.packing_start_time) : null;
+            
+            return (
+              <div key={projectName} className="bg-[#27272A] border border-[#3F3F46] rounded-sm p-6" data-testid={`project-group-${projectName}`}>
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#3F3F46]">
+                  <div className="flex-1">
+                    <h2 className="font-heading text-2xl font-bold text-white mb-2">{projectName}</h2>
+                    <div className="flex items-center space-x-4 text-sm">
+                      <span className="text-[#A1A1AA]">{projectData.checkouts.length} item(s)</span>
+                      {isPacking && elapsedTime && (
+                        <span className="flex items-center space-x-2 text-[#F9982E] font-data font-bold">
+                          <Clock size={16} className="animate-pulse" />
+                          <span>{elapsedTime} elapsed</span>
+                        </span>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <Dialog open={markInDialog} onOpenChange={setMarkInDialog}>
-        <DialogContent className="bg-[#27272A] border-[#3F3F46] text-white max-w-2xl" data-testid="mark-in-dialog">
-          <DialogHeader>
-            <DialogTitle className="font-heading text-2xl font-bold">
-              MARK IN: {selectedCheckout?.item_name}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div>
-              <Label className="text-[#A1A1AA] text-sm mb-2 block">
-                Quantity Out: <span className="text-white font-data font-bold">{selectedCheckout?.quantity_out}</span>
-              </Label>
-            </div>
-            <div>
-              <Label className="text-white text-sm mb-2 block">Quantity Returned *</Label>
-              <Input
-                type="number"
-                data-testid="quantity-returned-input"
-                min="0"
-                max={selectedCheckout?.quantity_out}
-                value={markInForm.quantity_returned}
-                onChange={(e) => setMarkInForm({...markInForm, quantity_returned: parseInt(e.target.value) || 0})}
-                className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12"
-              />
-            </div>
-
-            <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-sm p-4">
-              <Label className="text-white text-sm mb-3 block font-bold">Repack Checklist</Label>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="all-parts"
-                    data-testid="check-all-parts"
-                    checked={markInForm.repack_checklist.all_parts_present}
-                    onCheckedChange={(checked) => 
-                      setMarkInForm({
-                        ...markInForm,
-                        repack_checklist: {...markInForm.repack_checklist, all_parts_present: checked}
-                      })
-                    }
-                    className="border-[#3F3F46] data-[state=checked]:bg-[#F9982E] data-[state=checked]:border-[#F9982E]"
-                  />
-                  <Label htmlFor="all-parts" className="text-white cursor-pointer">All parts/accessories present</Label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="batteries"
-                    data-testid="check-batteries"
-                    checked={markInForm.repack_checklist.batteries_returned}
-                    onCheckedChange={(checked) => 
-                      setMarkInForm({
-                        ...markInForm,
-                        repack_checklist: {...markInForm.repack_checklist, batteries_returned: checked}
-                      })
-                    }
-                    className="border-[#3F3F46] data-[state=checked]:bg-[#F9982E] data-[state=checked]:border-[#F9982E]"
-                  />
-                  <Label htmlFor="batteries" className="text-white cursor-pointer">Batteries returned</Label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="cables"
-                    data-testid="check-cables"
-                    checked={markInForm.repack_checklist.cables_included}
-                    onCheckedChange={(checked) => 
-                      setMarkInForm({
-                        ...markInForm,
-                        repack_checklist: {...markInForm.repack_checklist, cables_included: checked}
-                      })
-                    }
-                    className="border-[#3F3F46] data-[state=checked]:bg-[#F9982E] data-[state=checked]:border-[#F9982E]"
-                  />
-                  <Label htmlFor="cables" className="text-white cursor-pointer">All cables included</Label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="no-damage"
-                    data-testid="check-no-damage"
-                    checked={markInForm.repack_checklist.no_damage}
-                    onCheckedChange={(checked) => 
-                      setMarkInForm({
-                        ...markInForm,
-                        repack_checklist: {...markInForm.repack_checklist, no_damage: checked}
-                      })
-                    }
-                    className="border-[#3F3F46] data-[state=checked]:bg-[#F9982E] data-[state=checked]:border-[#F9982E]"
-                  />
-                  <Label htmlFor="no-damage" className="text-white cursor-pointer">No visible damage</Label>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-white text-sm mb-2 block">Report Issues</Label>
-              <div className="flex space-x-2 mb-3">
-                <Input
-                  data-testid="issue-input"
-                  value={issueDescription}
-                  onChange={(e) => setIssueDescription(e.target.value)}
-                  placeholder="Describe any issue..."
-                  className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12"
-                  onKeyPress={(e) => e.key === 'Enter' && addIssue()}
-                />
-                <Button
-                  onClick={addIssue}
-                  data-testid="add-issue-button"
-                  className="bg-[#EF4444] hover:bg-[#EF4444]/90 text-white rounded-sm"
-                >
-                  Add Issue
-                </Button>
-              </div>
-              {markInForm.issues.length > 0 && (
-                <div className="space-y-2">
-                  {markInForm.issues.map((issue, index) => (
-                    <div key={index} data-testid={`issue-${index}`} className="bg-[#1B1B1B] border border-[#EF4444] rounded-sm p-3 flex items-center justify-between">
-                      <span className="text-white text-sm">{issue}</span>
-                      <button
-                        onClick={() => removeIssue(index)}
-                        data-testid={`remove-issue-${index}`}
-                        className="text-[#EF4444] hover:text-[#EF4444]/80 text-xs font-bold"
+                  <div className="flex space-x-3">
+                    {!isPacking ? (
+                      <Button
+                        onClick={() => handleStartPacking(projectData.project_id)}
+                        data-testid={`start-packing-${projectName}`}
+                        className="bg-[#10B981] hover:bg-[#10B981]/90 text-white font-bold uppercase tracking-wider rounded-sm"
                       >
-                        REMOVE
-                      </button>
+                        <Play size={16} className="mr-2" />
+                        Start Packing
+                      </Button>
+                    ) : (
+                      <div className="bg-emerald-950/30 border border-emerald-900 px-4 py-2 rounded-sm">
+                        <span className="text-emerald-400 font-data text-sm">PACKING IN PROGRESS</span>
+                      </div>
+                    )}
+                    <Button
+                      onClick={() => handleGeneratePDF(projectData.project_id, projectName)}
+                      data-testid={`generate-pdf-${projectName}`}
+                      className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
+                    >
+                      <FileText size={16} className="mr-2" />
+                      Packing List PDF
+                    </Button>
+                  </div>
+                </div>
+
+                {!isPacking && (
+                  <div className="bg-blue-950/30 border border-blue-900 rounded-sm p-4 mb-4">
+                    <div className="flex items-start space-x-3">
+                      <AlertCircle className="text-blue-400 mt-0.5" size={20} />
+                      <div className="text-sm text-blue-300">
+                        <strong>Click "Start Packing"</strong> to begin tracking packing time. Then mark each item as you pack it.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {projectData.checkouts.map((checkout) => (
+                    <div
+                      key={checkout.id}
+                      data-testid={`checkout-${checkout.id}`}
+                      className={`bg-[#1B1B1B] border rounded-sm p-5 ${
+                        isOverdue(checkout.expected_return) ? 'border-[#EF4444]' : 'border-[#3F3F46]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <div className="text-white font-medium text-lg">{checkout.item_name}</div>
+                            {isOverdue(checkout.expected_return) && (
+                              <span className="bg-red-950/30 text-red-400 border-red-900 border px-2 py-1 rounded-sm text-xs font-mono uppercase tracking-widest flex items-center space-x-1">
+                                <AlertTriangle size={12} />
+                                <span>OVERDUE</span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Quantity Out</div>
+                              <div className="text-white font-data font-bold text-lg">{checkout.quantity_out}</div>
+                            </div>
+                            <div>
+                              <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Expected Return</div>
+                              <div className={isOverdue(checkout.expected_return) ? 'text-[#EF4444] font-bold' : 'text-white'}>
+                                {new Date(checkout.expected_return).toLocaleDateString()}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Notes</div>
+                              <div className="text-white">{checkout.notes || 'None'}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {isPacking && (
+                          <div className="ml-6 flex flex-col space-y-2">
+                            <div className="text-xs text-[#71717A] uppercase tracking-wider mb-1">Quick Mark In:</div>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleQuickMarkIn(checkout.id, 'good')}
+                                data-testid={`mark-in-good-${checkout.id}`}
+                                className="flex items-center space-x-2 px-4 py-2 bg-[#10B981] hover:bg-[#10B981]/90 text-white rounded-sm font-bold uppercase tracking-wider text-sm transition-colors"
+                                title="Item returned in good condition"
+                              >
+                                <CheckCircle2 size={16} />
+                                <span>All Good</span>
+                              </button>
+                              <button
+                                onClick={() => handleQuickMarkIn(checkout.id, 'damaged')}
+                                data-testid={`mark-in-damaged-${checkout.id}`}
+                                className="flex items-center space-x-2 px-4 py-2 bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-white rounded-sm font-bold uppercase tracking-wider text-sm transition-colors"
+                                title="Item has damage - will create issue"
+                              >
+                                <AlertCircle size={16} />
+                                <span>Damaged</span>
+                              </button>
+                              <button
+                                onClick={() => handleQuickMarkIn(checkout.id, 'missing')}
+                                data-testid={`mark-in-missing-${checkout.id}`}
+                                className="flex items-center space-x-2 px-4 py-2 bg-[#EF4444] hover:bg-[#EF4444]/90 text-white rounded-sm font-bold uppercase tracking-wider text-sm transition-colors"
+                                title="Item not returned - will mark as lost"
+                              >
+                                <XCircle size={16} />
+                                <span>Missing</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
 
-            <div>
-              <Label className="text-white text-sm mb-2 block">Notes (Optional)</Label>
-              <Input
-                data-testid="mark-in-notes"
-                value={markInForm.notes}
-                onChange={(e) => setMarkInForm({...markInForm, notes: e.target.value})}
-                className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12"
-                placeholder="Any additional notes..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={() => setMarkInDialog(false)}
-              data-testid="cancel-mark-in"
-              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-sm"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleMarkIn}
-              data-testid="confirm-mark-in"
-              className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-sm"
-            >
-              Confirm Mark In
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                {packingStats[projectData.project_id] && packingStats[projectData.project_id].total_items > 0 && (
+                  <div className="mt-6 pt-6 border-t border-[#3F3F46]">
+                    <h3 className="text-white font-heading text-lg font-bold mb-4">PACKING PERFORMANCE</h3>
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-sm p-4">
+                        <div className="text-[#71717A] text-xs uppercase tracking-wider mb-2">Total Time</div>
+                        <div className="text-white font-data font-bold text-2xl">
+                          {Math.floor(packingStats[projectData.project_id].total_time_minutes / 60)}h {packingStats[projectData.project_id].total_time_minutes % 60}m
+                        </div>
+                      </div>
+                      <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-sm p-4">
+                        <div className="text-[#71717A] text-xs uppercase tracking-wider mb-2">Average per Item</div>
+                        <div className="text-white font-data font-bold text-2xl">
+                          {packingStats[projectData.project_id].average_time_minutes}m
+                        </div>
+                      </div>
+                      <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-sm p-4">
+                        <div className="text-[#71717A] text-xs uppercase tracking-wider mb-2">Fastest</div>
+                        <div className="text-emerald-400 font-data font-bold text-sm">
+                          {packingStats[projectData.project_id].fastest_item?.time_minutes}m
+                        </div>
+                        <div className="text-[#71717A] text-xs truncate">
+                          {packingStats[projectData.project_id].fastest_item?.name}
+                        </div>
+                      </div>
+                      <div className="bg-[#1B1B1B] border border-[#3F3F46] rounded-sm p-4">
+                        <div className="text-[#71717A] text-xs uppercase tracking-wider mb-2">Slowest</div>
+                        <div className="text-orange-400 font-data font-bold text-sm">
+                          {packingStats[projectData.project_id].slowest_item?.time_minutes}m
+                        </div>
+                        <div className="text-[#71717A] text-xs truncate">
+                          {packingStats[projectData.project_id].slowest_item?.name}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
