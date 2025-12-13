@@ -96,7 +96,6 @@ export default function Dashboard() {
       testId: 'stat-lost'
     },
     {
-    {
       title: 'Total Items',
       value: stats?.total_items || 0,
       icon: Package,
