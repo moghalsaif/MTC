@@ -567,9 +567,163 @@ class EquipmentTrackerAPITester:
             
         return False
 
+    def test_wrap_up_project_setup(self):
+        """Create Wrap-Up Test Project with completed checkouts"""
+        # Create Wrap-Up Test Project
+        project_data = {
+            "name": "Wrap-Up Test Project",
+            "location": "Studio A",
+            "start_date": (datetime.now(timezone.utc) - timedelta(days=7)).isoformat(),
+            "end_date": (datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
+            "owner": "Test User",
+            "status": "Active"
+        }
+        
+        success, response = self.run_test(
+            "Create Wrap-Up Test Project",
+            "POST",
+            "projects",
+            200,
+            data=project_data
+        )
+        
+        if success:
+            self.wrap_up_project_id = response.get('id')
+            return True
+        return False
+
+    def test_wrap_up_equipment_setup(self):
+        """Create equipment and mark it out then return it for wrap-up testing"""
+        if not self.wrap_up_project_id:
+            self.log_result("Wrap-Up Equipment Setup", False, "No wrap-up project")
+            return False
+            
+        # Create test equipment
+        item_data = {
+            "name": "Wrap-Up Test Camera",
+            "category": "Camera",
+            "total_quantity": 3,
+            "location_in_studio": "Equipment Room B",
+            "min_stock": 1
+        }
+        
+        success, response = self.run_test(
+            "Create Wrap-Up Test Equipment",
+            "POST",
+            "items",
+            200,
+            data=item_data
+        )
+        
+        if not success:
+            return False
+            
+        wrap_up_item_id = response.get('id')
+        
+        # Mark out equipment
+        mark_out_data = {
+            "item_id": wrap_up_item_id,
+            "project_id": self.wrap_up_project_id,
+            "quantity": 2,
+            "expected_return": (datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
+            "notes": "Wrap-up test checkout"
+        }
+        
+        success, response = self.run_test(
+            "Mark Out Wrap-Up Equipment",
+            "POST",
+            "checkouts/mark-out",
+            200,
+            data=mark_out_data
+        )
+        
+        if not success:
+            return False
+            
+        checkout_id = response.get('checkout', {}).get('id')
+        
+        # Mark in all equipment (complete return)
+        mark_in_data = {
+            "checkout_id": checkout_id,
+            "condition": "good",
+            "quantity_returned": None  # Return all
+        }
+        
+        success, response = self.run_test(
+            "Complete Return for Wrap-Up Test",
+            "POST",
+            "checkouts/quick-mark-in",
+            200,
+            data=mark_in_data
+        )
+        
+        return success
+
+    def test_get_project_checkouts_api(self):
+        """Test GET /api/checkouts/project/{project_id} returns all checkouts including completed ones"""
+        if not hasattr(self, 'wrap_up_project_id') or not self.wrap_up_project_id:
+            self.log_result("Get Project Checkouts API", False, "No wrap-up project to test")
+            return False
+            
+        success, response = self.run_test(
+            "Get Project Checkouts (All including completed)",
+            "GET",
+            f"checkouts/project/{self.wrap_up_project_id}",
+            200
+        )
+        
+        if success:
+            # Verify we get completed checkouts
+            completed_checkouts = [c for c in response if c.get('status') == 'Completed']
+            if len(completed_checkouts) > 0:
+                self.log_result("Project Checkouts Include Completed", True)
+                print(f"   Found {len(completed_checkouts)} completed checkouts")
+                return True
+            else:
+                self.log_result("Project Checkouts Include Completed", False, "No completed checkouts found")
+        
+        return success
+
+    def test_pdf_generation_for_completed_project(self):
+        """Test PDF generation for project with all items returned"""
+        if not hasattr(self, 'wrap_up_project_id') or not self.wrap_up_project_id:
+            self.log_result("PDF Generation for Completed Project", False, "No wrap-up project to test")
+            return False
+            
+        try:
+            url = f"{self.api_url}/projects/{self.wrap_up_project_id}/packing-list-pdf"
+            headers = {'Authorization': f'Bearer {self.token}'}
+            
+            response = requests.get(url, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                # Check if response is PDF
+                content_type = response.headers.get('content-type', '')
+                content_disposition = response.headers.get('content-disposition', '')
+                
+                if 'application/pdf' in content_type and 'attachment' in content_disposition:
+                    self.log_result("PDF Generation for Completed Project", True)
+                    
+                    # Check PDF content size
+                    if len(response.content) > 1000:
+                        self.log_result("PDF Content Size for Completed Project", True)
+                        print(f"   PDF size: {len(response.content)} bytes")
+                        return True
+                    else:
+                        self.log_result("PDF Content Size for Completed Project", False, f"PDF too small: {len(response.content)} bytes")
+                else:
+                    self.log_result("PDF Generation for Completed Project", False, f"Wrong content type: {content_type}")
+            else:
+                self.log_result("PDF Generation for Completed Project", False, f"Status code: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("PDF Generation for Completed Project", False, f"Error: {str(e)}")
+            
+        return False
+
     def run_all_tests(self):
-        """Run all API tests focusing on the specific features"""
-        print("🧪 Equipment Tracker API Tests - Feature Specific")
+        """Run all API tests focusing on wrap-up center functionality"""
+        print("🧪 Equipment Tracker API Tests - Wrap-Up Center Focus")
         print(f"Testing against: {self.base_url}")
         print("=" * 60)
         
@@ -579,24 +733,28 @@ class EquipmentTrackerAPITester:
             print("❌ Authentication failed - stopping tests")
             return False
         
-        # Setup test data
-        print("\n🏗️  SETUP TEST DATA")
-        if not self.test_create_test_projects():
-            print("❌ Failed to create test projects - stopping tests")
+        # Setup wrap-up test data
+        print("\n🏗️  SETUP WRAP-UP TEST DATA")
+        if not self.test_wrap_up_project_setup():
+            print("❌ Failed to create wrap-up test project - stopping tests")
             return False
             
-        if not self.test_create_test_equipment():
-            print("❌ Failed to create test equipment - stopping tests")
+        if not self.test_wrap_up_equipment_setup():
+            print("❌ Failed to setup wrap-up test equipment - stopping tests")
             return False
         
-        # Core feature tests
-        print("\n📦 EQUIPMENT CHECKOUT/TRANSFER FEATURES")
-        self.test_mark_out_equipment()
-        self.test_partial_mark_in_api()
-        self.test_transfer_equipment_api()
+        # Wrap-up center specific tests
+        print("\n📋 WRAP-UP CENTER API TESTS")
+        self.test_get_project_checkouts_api()
+        self.test_pdf_generation_for_completed_project()
         
-        print("\n📄 PDF GENERATION FEATURE")
-        self.test_pdf_generation_api()
+        # Legacy feature tests for regression
+        print("\n📦 REGRESSION TESTS")
+        if self.test_create_test_projects() and self.test_create_test_equipment():
+            self.test_mark_out_equipment()
+            self.test_partial_mark_in_api()
+            self.test_transfer_equipment_api()
+            self.test_pdf_generation_api()
         
         print("\n🔍 BASIC API VALIDATION")
         self.test_get_active_checkouts()
