@@ -148,9 +148,16 @@ class MarkOutRequest(BaseModel):
 class MarkInRequest(BaseModel):
     checkout_id: str
     quantity_returned: int
-    repack_checklist: dict
+    all_good: bool = True
     notes: Optional[str] = None
     issues: Optional[List[str]] = None
+
+class StartPackingRequest(BaseModel):
+    project_id: str
+
+class QuickMarkInRequest(BaseModel):
+    checkout_id: str
+    condition: str
 
 class Checkout(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -163,6 +170,9 @@ class Checkout(BaseModel):
     checkout_time: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     expected_return: str
     return_time: Optional[str] = None
+    packing_start_time: Optional[str] = None
+    packing_complete_time: Optional[str] = None
+    packing_duration_minutes: Optional[int] = None
     status: str = "Active"
     notes: Optional[str] = None
     repack_checklist: Optional[dict] = None
@@ -389,6 +399,87 @@ async def mark_out(request: MarkOutRequest, current_user: dict = Depends(get_cur
     
     return {"message": "Item marked out successfully", "checkout": checkout.model_dump()}
 
+# Start Packing
+@api_router.post("/checkouts/start-packing")
+async def start_packing(request: StartPackingRequest, current_user: dict = Depends(get_current_user)):
+    packing_start = datetime.now(timezone.utc).isoformat()
+    
+    await db.checkouts.update_many(
+        {"project_id": request.project_id, "status": "Active"},
+        {"$set": {"packing_start_time": packing_start}}
+    )
+    
+    return {"message": "Packing timer started", "start_time": packing_start}
+
+# Quick Mark In (simplified)
+@api_router.post("/checkouts/quick-mark-in")
+async def quick_mark_in(request: QuickMarkInRequest, current_user: dict = Depends(get_current_user)):
+    checkout = await db.checkouts.find_one({"id": request.checkout_id}, {"_id": 0})
+    if not checkout:
+        raise HTTPException(status_code=404, detail="Checkout not found")
+    
+    if checkout["status"] != "Active":
+        raise HTTPException(status_code=400, detail="Checkout is not active")
+    
+    item = await db.items.find_one({"id": checkout["item_id"]}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    return_time = datetime.now(timezone.utc).isoformat()
+    quantity_returned = checkout["quantity_out"]
+    
+    packing_duration = None
+    if checkout.get("packing_start_time"):
+        start = datetime.fromisoformat(checkout["packing_start_time"].replace('Z', '+00:00'))
+        end = datetime.now(timezone.utc)
+        packing_duration = int((end - start).total_seconds() / 60)
+    
+    if request.condition == "damaged":
+        issue = Issue(
+            item_id=checkout["item_id"],
+            item_name=checkout["item_name"],
+            description="Item returned damaged from shoot",
+            project_id=checkout["project_id"],
+            severity="High"
+        )
+        await db.issues.insert_one(issue.model_dump())
+    elif request.condition == "missing":
+        lost_item = LostItem(
+            item_id=checkout["item_id"],
+            item_name=checkout["item_name"],
+            project_id=checkout["project_id"],
+            project_name=checkout["project_name"],
+            quantity_lost=checkout["quantity_out"]
+        )
+        await db.lost_items.insert_one(lost_item.model_dump())
+        quantity_returned = 0
+    
+    await db.checkouts.update_one(
+        {"id": request.checkout_id},
+        {"$set": {
+            "status": "Completed",
+            "quantity_returned": quantity_returned,
+            "return_time": return_time,
+            "packing_complete_time": return_time,
+            "packing_duration_minutes": packing_duration,
+            "repack_checklist": {"condition": request.condition}
+        }}
+    )
+    
+    new_available = item["quantity_available"] + quantity_returned
+    new_out = item["quantity_out"] - checkout["quantity_out"]
+    
+    await db.items.update_one(
+        {"id": checkout["item_id"]},
+        {"$set": {"quantity_available": new_available, "quantity_out": new_out}}
+    )
+    
+    return {
+        "message": "Item marked in successfully",
+        "packing_duration_minutes": packing_duration,
+        "condition": request.condition
+    }
+
 # Mark In
 @api_router.post("/checkouts/mark-in")
 async def mark_in(request: MarkInRequest, current_user: dict = Depends(get_current_user)):
@@ -443,7 +534,11 @@ async def mark_in(request: MarkInRequest, current_user: dict = Depends(get_curre
         {"$set": {"quantity_available": new_available, "quantity_out": new_out}}
     )
     
-    return {"message": "Item marked in successfully", "quantity_missing": quantity_missing}
+    return {
+        "message": "Item marked in successfully",
+        "quantity_missing": quantity_missing,
+        "packing_duration_minutes": packing_duration
+    }
 
 # Checkout Routes
 @api_router.get("/checkouts/active", response_model=List[Checkout])
@@ -762,6 +857,43 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+@api_router.get("/projects/{project_id}/packing-stats")
+async def get_packing_stats(project_id: str, current_user: dict = Depends(get_current_user)):
+    checkouts = await db.checkouts.find(
+        {"project_id": project_id, "status": "Completed", "packing_duration_minutes": {"$exists": True, "$ne": None}},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    if not checkouts:
+        return {
+            "total_items": 0,
+            "average_time_minutes": 0,
+            "total_time_minutes": 0,
+            "fastest_item": None,
+            "slowest_item": None
+        }
+    
+    durations = [c["packing_duration_minutes"] for c in checkouts]
+    total_time = sum(durations)
+    avg_time = total_time / len(durations)
+    
+    fastest = min(checkouts, key=lambda x: x["packing_duration_minutes"])
+    slowest = max(checkouts, key=lambda x: x["packing_duration_minutes"])
+    
+    return {
+        "total_items": len(checkouts),
+        "average_time_minutes": round(avg_time, 1),
+        "total_time_minutes": total_time,
+        "fastest_item": {
+            "name": fastest["item_name"],
+            "time_minutes": fastest["packing_duration_minutes"]
+        },
+        "slowest_item": {
+            "name": slowest["item_name"],
+            "time_minutes": slowest["packing_duration_minutes"]
+        }
+    }
 
 @api_router.get("/dashboard/stats")
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
