@@ -65,7 +65,7 @@ export default function Layout() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
               <h1 className="font-heading text-2xl font-black text-white tracking-tight" data-testid="app-title">
-                FLIGHT DECK
+                MACH TRAFFIC CONTROLLER
               </h1>
               <div className="flex space-x-1">
                 {navItems.map((item) => {

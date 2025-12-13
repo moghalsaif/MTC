@@ -36,7 +36,7 @@ code {
         --border: 63 63 70;
         --input: 63 63 70;
         --ring: 249 152 46;
-        --radius: 0.125rem;
+        --radius: 1rem;
     }
     .dark {
         --background: 27 27 27;
