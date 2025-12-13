@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Package, PackageOpen, AlertTriangle, Wrench, PackageX, FolderKanban, TrendingDown } from 'lucide-react';
+import { Package, PackageOpen, AlertTriangle, Wrench, PackageX, FolderKanban } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
