@@ -808,8 +808,9 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    active_checkouts = await db.checkouts.find(
-        {"project_id": project_id, "status": "Active"}, 
+    # Get ALL checkouts for this project (active + completed) for comparison
+    all_checkouts = await db.checkouts.find(
+        {"project_id": project_id, "status": {"$in": ["Active", "Completed", "Transferred"]}}, 
         {"_id": 0}
     ).to_list(1000)
     
@@ -853,6 +854,8 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
     
     elements.append(Paragraph("PROJECT DETAILS", heading_style))
     
+    generated_time = datetime.now(timezone.utc).strftime('%B %d, %Y at %I:%M %p UTC')
+    
     project_data = [
         ['Project Name:', project['name']],
         ['Location:', project.get('location', 'N/A')],
@@ -860,7 +863,7 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
         ['End Date:', datetime.fromisoformat(project['end_date']).strftime('%B %d, %Y') if project.get('end_date') else 'N/A'],
         ['Project Owner:', project.get('owner', 'N/A')],
         ['Status:', project['status']],
-        ['Generated:', datetime.now(timezone.utc).strftime('%B %d, %Y at %I:%M %p UTC')]
+        ['Generated:', generated_time]
     ]
     
     project_table = Table(project_data, colWidths=[2*inch, 4*inch])
@@ -880,37 +883,60 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
     elements.append(project_table)
     elements.append(Spacer(1, 0.4 * inch))
     
-    elements.append(Paragraph("EQUIPMENT CHECKED OUT", heading_style))
+    # EQUIPMENT COMPARISON TABLE - Shows Out vs Returned vs Remaining
+    elements.append(Paragraph("EQUIPMENT STATUS COMPARISON", heading_style))
     
-    if not active_checkouts:
-        elements.append(Paragraph("No equipment currently checked out for this project.", styles['Normal']))
+    if not all_checkouts:
+        elements.append(Paragraph("No equipment records for this project.", styles['Normal']))
     else:
-        equipment_data = [['Item Name', 'Category', 'Qty Out', 'Expected Return', 'Notes']]
+        # New comparison table with status
+        equipment_data = [['Item Name', 'Category', 'Qty Out', 'Qty Returned', 'Qty Remaining', 'Status']]
         
-        for checkout in active_checkouts:
+        total_out = 0
+        total_returned = 0
+        total_remaining = 0
+        
+        for checkout in all_checkouts:
             item = await db.items.find_one({"id": checkout['item_id']}, {"_id": 0})
-            expected_return = datetime.fromisoformat(checkout['expected_return'].replace('Z', '+00:00')).strftime('%m/%d/%Y %I:%M %p')
+            qty_out = checkout['quantity_out']
+            qty_returned = checkout.get('quantity_returned', 0)
+            qty_remaining = qty_out - qty_returned
+            
+            total_out += qty_out
+            total_returned += qty_returned
+            total_remaining += qty_remaining
+            
+            # Determine status
+            if checkout['status'] == 'Transferred':
+                status = 'TRANSFERRED'
+            elif qty_remaining == 0:
+                status = '✓ COMPLETE'
+            elif qty_returned > 0:
+                status = '⚠ PARTIAL'
+            else:
+                status = '○ PENDING'
             
             equipment_data.append([
                 checkout['item_name'],
                 item['category'] if item else 'N/A',
-                str(checkout['quantity_out']),
-                expected_return,
-                checkout.get('notes', '')[:30] + '...' if checkout.get('notes') and len(checkout.get('notes', '')) > 30 else checkout.get('notes', '')
+                str(qty_out),
+                str(qty_returned),
+                str(qty_remaining),
+                status
             ])
         
-        equipment_table = Table(equipment_data, colWidths=[2*inch, 1.2*inch, 0.7*inch, 1.3*inch, 1.3*inch])
+        equipment_table = Table(equipment_data, colWidths=[1.8*inch, 1*inch, 0.7*inch, 0.9*inch, 0.9*inch, 1*inch])
         equipment_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F9982E')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('ALIGN', (2, 1), (2, -1), 'CENTER'),
+            ('ALIGN', (2, 0), (5, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E5E5')),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#FAFAFA')])
         ]))
@@ -918,22 +944,26 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
         elements.append(equipment_table)
         elements.append(Spacer(1, 0.3 * inch))
         
-        total_items = len(active_checkouts)
-        total_quantity = sum(c['quantity_out'] for c in active_checkouts)
+        # Summary with comparison
+        completion_pct = round((total_returned / total_out * 100), 1) if total_out > 0 else 0
         
         summary_data = [
-            ['Total Items:', str(total_items)],
-            ['Total Quantity:', str(total_quantity)]
+            ['Total Items Checked Out:', str(len(all_checkouts))],
+            ['Total Quantity Out:', str(total_out)],
+            ['Total Quantity Returned:', str(total_returned)],
+            ['Total Remaining:', str(total_remaining)],
+            ['Completion:', f'{completion_pct}%']
         ]
         
-        summary_table = Table(summary_data, colWidths=[2*inch, 1*inch])
+        summary_table = Table(summary_data, colWidths=[2.5*inch, 1*inch])
         summary_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#F5F5F5')),
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#1B1B1B')),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
             ('FONTNAME', (1, 0), (1, -1), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 11),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
             ('TOPPADDING', (0, 0), (-1, -1), 8),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E5E5'))
