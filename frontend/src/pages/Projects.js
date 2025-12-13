@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, FolderKanban, Trash2 } from 'lucide-react';
+import { Plus, FolderKanban, Trash2, FileText } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
@@ -80,6 +80,28 @@ export default function Projects() {
     }
   };
 
+  const handleGeneratePDF = async (project) => {
+    try {
+      toast.info('Generating packing list...');
+      const response = await axios.get(`${API}/projects/${project.id}/packing-list-pdf`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `packing_list_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      toast.success('Packing list downloaded');
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+      toast.error('Failed to generate packing list');
+    }
+  };
+
   const getStatusBadge = (status) => {
     const badges = {
       'Planning': 'bg-blue-950/30 text-blue-400 border-blue-900',
@@ -137,14 +159,24 @@ export default function Projects() {
                     {project.status}
                   </span>
                 </div>
-                <button
-                  onClick={() => handleDeleteProject(project.id)}
-                  data-testid={`delete-project-${project.id}`}
-                  className="p-2 text-[#EF4444] hover:bg-[#EF4444]/10 rounded-sm transition-colors"
-                  title="Delete project"
-                >
-                  <Trash2 size={18} />
-                </button>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleGeneratePDF(project)}
+                    data-testid={`generate-pdf-${project.id}`}
+                    className="p-2 text-[#F9982E] hover:bg-[#F9982E]/10 rounded-sm transition-colors"
+                    title="Generate packing list PDF"
+                  >
+                    <FileText size={18} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteProject(project.id)}
+                    data-testid={`delete-project-${project.id}`}
+                    className="p-2 text-[#EF4444] hover:bg-[#EF4444]/10 rounded-sm transition-colors"
+                    title="Delete project"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
               <div className="space-y-2 text-sm">
                 {project.location && (
