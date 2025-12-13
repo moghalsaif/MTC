@@ -11,9 +11,12 @@ class EquipmentTrackerAPITester:
         self.tests_run = 0
         self.tests_passed = 0
         self.test_results = []
-        self.created_items = []
-        self.created_projects = []
-        self.created_checkouts = []
+        
+        # Test data storage for specific features
+        self.test_project_a_id = None
+        self.test_project_b_id = None
+        self.test_item_id = None
+        self.test_checkout_id = None
 
     def log_result(self, test_name, success, details=""):
         """Log test result"""
