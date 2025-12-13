@@ -202,12 +202,22 @@ export default function Projects() {
               />
             </div>
             <div>
-              <Label className="text-white text-sm mb-2 block">Shoot Dates</Label>
+              <Label className="text-white text-sm mb-2 block">Start Date</Label>
               <Input
-                data-testid="project-dates-input"
-                value={newProjectForm.shoot_dates}
-                onChange={(e) => setNewProjectForm({...newProjectForm, shoot_dates: e.target.value})}
-                placeholder="e.g., Dec 15-20, 2025"
+                type="date"
+                data-testid="project-start-date-input"
+                value={newProjectForm.start_date}
+                onChange={(e) => setNewProjectForm({...newProjectForm, start_date: e.target.value})}
+                className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12"
+              />
+            </div>
+            <div>
+              <Label className="text-white text-sm mb-2 block">End Date</Label>
+              <Input
+                type="date"
+                data-testid="project-end-date-input"
+                value={newProjectForm.end_date}
+                onChange={(e) => setNewProjectForm({...newProjectForm, end_date: e.target.value})}
                 className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12"
               />
             </div>
