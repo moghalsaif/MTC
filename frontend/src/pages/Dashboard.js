@@ -184,21 +184,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {stats?.low_stock_items && stats.low_stock_items.length > 0 && (
-        <div className="bg-[#27272A] border border-[#F59E0B] rounded-2xl p-6" data-testid="low-stock-section">
-          <div className="flex items-center space-x-3 mb-4">
-            <TrendingDown className="text-[#F59E0B]" size={24} />
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-[#A1A1AA]">{item.category}</span>
-                  <span className="font-data text-[#F59E0B] font-bold">
-                    {item.quantity_available} / {item.min_stock}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
