@@ -1,0 +1,119 @@
+{
+  "identity": {
+    "name": "E1: The Anti-AI Designer",
+    "mission": "Create a 'Flight Deck' logistics interface that feels like a piece of high-end cinema equipment itself. Industrial, high-contrast, and tactile.",
+    "tone": "Professional, Urgent, Precise, Industrial",
+    "anti_patterns": [
+      "Soft, rounded 'SaaS' aesthetics",
+      "Low contrast gray-on-gray text",
+      "Generic 'Bootstrap' grids",
+      "Gradients that look like candy (use gradients for lighting/glow only)"
+    ]
+  },
+  "typography": {
+    "headings": {
+      "family": "Chivo, sans-serif",
+      "usage": "Page titles, Section headers",
+      "weights": ["900", "700"],
+      "tracking": "tracking-tight"
+    },
+    "body": {
+      "family": "Manrope, sans-serif",
+      "usage": "General text, descriptions",
+      "weights": ["400", "500"]
+    },
+    "data": {
+      "family": "JetBrains Mono, monospace",
+      "usage": "Stock numbers, Dates, IDs, Quantities",
+      "weights": ["500"]
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": "#1B1B1B",
+      "surface": "#27272A",
+      "surface_highlight": "#3F3F46",
+      "primary": "#F9982E",
+      "primary_foreground": "#000000",
+      "secondary": "#FFFFFF",
+      "muted": "#71717A",
+      "border": "#3F3F46",
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "error": "#EF4444",
+      "info": "#3B82F6"
+    },
+    "usage_rules": {
+      "background": "Use #1B1B1B as the global background. Do not use pure black.",
+      "primary": "Use #F9982E ONLY for primary actions (Mark Out, Save) and active states. Do not overuse.",
+      "text": "Headings in White (#FFFFFF). Body in #A1A1AA. Data in #E4E4E7.",
+      "borders": "Use 1px borders in #3F3F46 to define structure. Avoid shadows for depth; use borders instead."
+    }
+  },
+  "visual_enhancers": {
+    "textures": [
+      "Subtle noise overlay (opacity 0.03) on the main background to reduce digital flatness.",
+      "Scanline effect (optional) on data visualization panels."
+    ],
+    "borders": "Sharp edges or minimal radius (rounded-sm / 2px). No pill shapes for containers.",
+    "shadows": "None. Use 'flat' layering with border contrast.",
+    "glows": "Use 'drop-shadow-[0_0_8px_rgba(249,152,46,0.5)]' for active states or critical alerts."
+  },
+  "layout_strategy": {
+    "grid_system": "The 'Control Room' Grid. Dense, information-rich, minimal whitespace between data points, but generous padding inside containers.",
+    "spacing": "Compact gaps (gap-2 or gap-4) between panels. Large padding (p-6) inside panels to frame the content.",
+    "mobile": "Stack vertically. Buttons must be full-width (h-12 or h-14) for easy thumb access."
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#F9982E] text-black hover:bg-[#F9982E]/90 font-bold uppercase tracking-wider rounded-sm",
+      "secondary": "bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-sm",
+      "destructive": "bg-[#EF4444] text-white hover:bg-[#EF4444]/90 rounded-sm"
+    },
+    "cards": {
+      "style": "bg-[#27272A] border border-[#3F3F46] rounded-sm p-0",
+      "header": "border-b border-[#3F3F46] p-4 bg-[#27272A]",
+      "content": "p-4"
+    },
+    "inputs": {
+      "style": "bg-[#1B1B1B] border border-[#3F3F46] focus:border-[#F9982E] rounded-sm text-white h-12"
+    },
+    "status_badges": {
+      "style": "font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-sm border",
+      "variants": {
+        "available": "bg-emerald-950/30 text-emerald-400 border-emerald-900",
+        "out": "bg-orange-950/30 text-orange-400 border-orange-900",
+        "overdue": "bg-red-950/30 text-red-400 border-red-900",
+        "maintenance": "bg-blue-950/30 text-blue-400 border-blue-900"
+      }
+    }
+  },
+  "image_urls": {
+    "hero_inventory": "https://images.unsplash.com/photo-1625961332638-d56d484bc0d8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwyfHxjaW5lbWElMjBjYW1lcmElMjBzdHVkaW8lMjBlcXVpcG1lbnR8ZW58MHx8fHwxNzY1NjA3NTA4fDA&ixlib=rb-4.1.0&q=85",
+    "context_lighting": "https://images.pexels.com/photos/3379934/pexels-photo-3379934.jpeg",
+    "camera_lens": "https://images.unsplash.com/photo-1762028895833-59a751ccf89e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwzfHxjaW5lbWElMjBjYW1lcmElMjBzdHVkaW8lMjBlcXVpcG1lbnR8ZW58MHx8fHwxNzY1NjA3NTA4fDA&ixlib=rb-4.1.0&q=85"
+  },
+  "instructions_to_main_agent": [
+    "1. SETUP: Install 'lucide-react' for icons. Use 'Chivo' and 'Manrope' from Google Fonts.",
+    "2. THEME: Override the 'dark' theme in 'index.css' with the palette provided above. Ensure 'background' is #1B1B1B.",
+    "3. LAYOUT: Build the 'Main Dashboard' using a Bento Grid. Key metrics (Items Out, Overdue) should be top-level cards.",
+    "4. INTERACTION: The 'Mark Out' flow should be a modal or drawer. Do not navigate away from the inventory list.",
+    "5. MOBILE: Ensure the 'Mark Out' and 'Mark In' buttons are fixed at the bottom of the screen on mobile devices (z-50).",
+    "6. DATA: Use the 'JetBrains Mono' font for all numbers (stock counts, dates).",
+    "7. VISUALS: Add a subtle 1px border to all cards. Do not use shadows for elevation, use color contrast.",
+    "8. NOTIFICATIONS: Use 'sonner' for toast notifications (e.g., 'Gear Marked Out Successfully')."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) sparingly, only for overlays.",
+    "You MUST NOT apply universal transition. Eg: 'transition: all'.",
+    "You MUST NOT center align the app container.",
+    "Always use modern button styles (sharp, tactile) relevant to the app style.",
+    "NEVER use AI assistant Emoji characters.",
+    "Every interaction needs micro-animations.",
+    "Use 2-3x more spacing than feels comfortable inside containers.",
+    "All interactive elements MUST include 'data-testid' attribute."
+  ]
+}
