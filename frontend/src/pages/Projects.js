@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, FolderKanban } from 'lucide-react';
+import { Plus, FolderKanban, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
@@ -18,10 +18,10 @@ export default function Projects() {
   const [newProjectForm, setNewProjectForm] = useState({
     name: '',
     location: '',
-    shoot_dates: '',
+    start_date: '',
+    end_date: '',
     owner: '',
-    status: 'Planning',
-    expected_return: ''
+    status: 'Planning'
   });
 
   useEffect(() => {
@@ -53,15 +53,30 @@ export default function Projects() {
       setNewProjectForm({
         name: '',
         location: '',
-        shoot_dates: '',
+        start_date: '',
+        end_date: '',
         owner: '',
-        status: 'Planning',
-        expected_return: ''
+        status: 'Planning'
       });
       fetchProjects();
     } catch (error) {
       console.error('Failed to create project:', error);
       toast.error('Failed to create project');
+    }
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    if (!window.confirm('Are you sure you want to delete this project?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API}/projects/${projectId}`);
+      toast.success('Project deleted successfully');
+      fetchProjects();
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      toast.error(error.response?.data?.detail || 'Failed to delete project');
     }
   };
 
