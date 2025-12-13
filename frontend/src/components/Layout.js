@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, Package, PackageOpen, FolderKanban, AlertTriangle, PackageX, Wrench, LogOut, Bell } from 'lucide-react';
+import { LayoutDashboard, Package, PackageOpen, FolderKanban, AlertTriangle, PackageX, Wrench, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -61,13 +61,13 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-[#1B1B1B] noise-bg">
       <nav className="border-b border-[#3F3F46] bg-[#27272A]">
-        <div className="max-w-[1800px] mx-auto px-6 py-4">
+        <div className="max-w-[1920px] mx-auto px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <h1 className="font-heading text-2xl font-black text-white tracking-tight" data-testid="app-title">
+            <div className="flex items-center space-x-12">
+              <h1 className="font-heading text-xl font-black text-white tracking-tight" data-testid="app-title">
                 MACH TRAFFIC CONTROLLER
               </h1>
-              <div className="flex space-x-1">
+              <div className="flex space-x-2">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -75,9 +75,9 @@ export default function Layout() {
                       key={item.path}
                       to={item.path}
                       data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-2xl text-sm font-medium transition-colors ${
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
                         isActive(item.path)
-                          ? 'bg-[#F9982E] text-black'
+                          ? 'bg-[#F9982E] text-black shadow-lg'
                           : 'text-[#A1A1AA] hover:text-white hover:bg-[#3F3F46]'
                       }`}
                     >
@@ -89,33 +89,20 @@ export default function Layout() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="relative" data-testid="notification-bell">
-                <Bell size={20} className="text-[#A1A1AA] hover:text-white cursor-pointer" />
-                {notifications.length > 0 && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#EF4444] rounded-full flex items-center justify-center">
-                    <span className="text-[10px] font-bold text-white">{notifications.length}</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="text-right">
-                  <div className="text-sm font-medium text-white" data-testid="user-name">{user?.name}</div>
-                  <div className="text-xs text-[#71717A]" data-testid="user-email">{user?.email}</div>
-                </div>
-                <button
-                  onClick={logout}
-                  data-testid="logout-button"
-                  className="p-2 rounded-2xl text-[#A1A1AA] hover:text-white hover:bg-[#3F3F46] transition-colors"
-                  title="Logout"
-                >
-                  <LogOut size={18} />
-                </button>
-              </div>
+              <span className="text-sm text-[#A1A1AA]" data-testid="user-name">{user?.name}</span>
+              <button
+                onClick={logout}
+                data-testid="logout-button"
+                className="px-4 py-2 rounded-2xl text-white bg-[#3F3F46] hover:bg-[#EF4444] transition-colors font-medium text-sm"
+                title="Logout"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>
       </nav>
-      <main className="max-w-[1800px] mx-auto px-6 py-8">
+      <main className="max-w-[1920px] mx-auto px-8 py-8">
         <Outlet />
       </main>
     </div>
