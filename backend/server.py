@@ -955,6 +955,7 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
         
         # Summary with comparison
         completion_pct = round((total_returned / total_out * 100), 1) if total_out > 0 else 0
+        is_fully_returned = total_remaining == 0 and total_out > 0
         
         summary_data = [
             ['Total Items Checked Out:', str(len(all_checkouts))],
@@ -979,6 +980,32 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
         ]))
         
         elements.append(summary_table)
+        
+        # Add 100% RETURN CONFIRMATION if all items are back
+        if is_fully_returned:
+            elements.append(Spacer(1, 0.3 * inch))
+            
+            confirmation_style = ParagraphStyle(
+                'Confirmation',
+                parent=styles['Normal'],
+                fontSize=14,
+                textColor=colors.HexColor('#10B981'),
+                alignment=TA_CENTER,
+                fontName='Helvetica-Bold',
+                spaceAfter=10
+            )
+            
+            confirmation_box = ParagraphStyle(
+                'ConfirmationBox',
+                parent=styles['Normal'],
+                fontSize=10,
+                textColor=colors.HexColor('#1B1B1B'),
+                alignment=TA_CENTER
+            )
+            
+            elements.append(Paragraph("✓ 100% INVENTORY RETURNED", confirmation_style))
+            elements.append(Paragraph(f"All {total_out} item(s) assigned to this project have been verified and returned to inventory.", confirmation_box))
+            elements.append(Paragraph(f"Verification completed on {generated_time}", confirmation_box))
     
     elements.append(Spacer(1, 0.5 * inch))
     
