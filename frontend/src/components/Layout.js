@@ -11,37 +11,6 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState([]);
-
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      const response = await axios.get(`${API}/dashboard/stats`);
-      const notifs = [];
-      if (response.data.overdue_count > 0) {
-        notifs.push({
-          id: 'overdue',
-          message: `${response.data.overdue_count} item(s) overdue`,
-          severity: 'high'
-        });
-      }
-      if (response.data.low_stock_items?.length > 0) {
-        notifs.push({
-          id: 'low-stock',
-          message: `${response.data.low_stock_items.length} item(s) low on stock`,
-          severity: 'medium'
-        });
-      }
-      setNotifications(notifs);
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-    }
-  };
 
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
