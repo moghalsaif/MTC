@@ -1,27 +1,25 @@
-# Test Results for Equipment Tracker
+# Test Results for Equipment Tracker - Wrap-Up Workflow
 
 ## Features to Test
-1. F1 Font (Rajdhani) on equipment names - In Inventory and Items Out pages
-2. PDF Comparison Table - Shows Qty Out vs Qty Returned vs Qty Remaining
-3. Partial Quantity Mark-In - User can specify exact quantity to return
-4. Transfer Equipment Feature - Header button and item-level transfer
+1. PDF generation in Wrap-Up Center even when all items returned
+2. 100% Inventory Verified state shows correctly
+3. Return Summary displays: Items Assigned, Total Qty Out, Total Returned
+4. Return Confirmation PDF button always available
+5. PDF shows comparison table and 100% confirmation message
 
 ## Test Credentials
 - Email: testuser@test.com
 - Password: testpassword
 
-## Test Data Created
-- Project "Test Shoot A" - has 3 items checked out
-- Project "Test Shoot B" - target for transfer testing
+## Test Data
+- Project "Wrap-Up Test Project" has 1 checkout marked as Completed (all items returned)
+- This should show the 100% verified state
 
 ## API Endpoints to Test
-- POST /api/checkouts/quick-mark-in (with quantity_returned param)
-- POST /api/checkouts/transfer
-- GET /api/projects/{id}/packing-list-pdf (comparison table)
-
-## Previous Issues
-- ThemeContext.js file deleted (housekeeping)
-- F1 font class added to Inventory.js item names
+- GET /api/checkouts/project/{project_id} - Get all checkouts including completed
+- GET /api/projects/{project_id}/packing-list-pdf - Generate PDF even for completed projects
 
 ## Incorporate User Feedback
-- None yet
+- PDF generation must NEVER be blocked by item status
+- "All items returned" is a VERIFIED state, not an end state
+- PDF must clearly indicate project name, items assigned, return status, 100% confirmation
