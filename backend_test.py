@@ -17,6 +17,12 @@ class EquipmentTrackerAPITester:
         self.test_project_b_id = None
         self.test_item_id = None
         self.test_checkout_id = None
+        self.wrap_up_project_id = None
+        
+        # Initialize lists for cleanup
+        self.created_items = []
+        self.created_projects = []
+        self.created_checkouts = []
 
     def log_result(self, test_name, success, details=""):
         """Log test result"""
