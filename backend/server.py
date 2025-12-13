@@ -516,13 +516,23 @@ async def mark_in(request: MarkInRequest, current_user: dict = Depends(get_curre
             )
             await db.issues.insert_one(issue.model_dump())
     
+    return_time = datetime.now(timezone.utc).isoformat()
+    
+    packing_duration = None
+    if checkout.get("packing_start_time"):
+        start = datetime.fromisoformat(checkout["packing_start_time"].replace('Z', '+00:00'))
+        end = datetime.now(timezone.utc)
+        packing_duration = int((end - start).total_seconds() / 60)
+    
     await db.checkouts.update_one(
         {"id": request.checkout_id},
         {"$set": {
             "status": "Completed",
             "quantity_returned": request.quantity_returned,
-            "return_time": datetime.now(timezone.utc).isoformat(),
-            "repack_checklist": request.repack_checklist
+            "return_time": return_time,
+            "packing_complete_time": return_time,
+            "packing_duration_minutes": packing_duration,
+            "repack_checklist": {"all_good": request.all_good}
         }}
     )
     
