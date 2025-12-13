@@ -38,6 +38,27 @@ code {
         --ring: 249 152 46;
         --radius: 1rem;
     }
+    .light {
+        --background: 255 255 255;
+        --foreground: 0 0 0;
+        --card: 249 250 251;
+        --card-foreground: 0 0 0;
+        --popover: 255 255 255;
+        --popover-foreground: 0 0 0;
+        --primary: 249 152 46;
+        --primary-foreground: 0 0 0;
+        --secondary: 243 244 246;
+        --secondary-foreground: 0 0 0;
+        --muted: 156 163 175;
+        --muted-foreground: 107 114 128;
+        --accent: 249 152 46;
+        --accent-foreground: 0 0 0;
+        --destructive: 239 68 68;
+        --destructive-foreground: 255 255 255;
+        --border: 229 231 235;
+        --input: 229 231 235;
+        --ring: 249 152 46;
+    }
     .dark {
         --background: 27 27 27;
         --foreground: 255 255 255;
@@ -66,7 +87,7 @@ code {
         @apply border-border;
     }
     body {
-        @apply bg-[#1B1B1B] text-foreground;
+        @apply bg-background text-foreground transition-colors duration-300;
     }
 }
 
