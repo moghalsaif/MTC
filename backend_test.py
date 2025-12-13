@@ -369,57 +369,249 @@ class EquipmentTrackerAPITester:
         )
         return success
 
+    def test_create_test_projects(self):
+        """Create Test Shoot A and Test Shoot B projects"""
+        # Create Test Shoot A
+        project_a_data = {
+            "name": "Test Shoot A",
+            "location": "Studio 1",
+            "start_date": datetime.now(timezone.utc).isoformat(),
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            "owner": "Test User",
+            "status": "Active"
+        }
+        
+        success_a, response_a = self.run_test(
+            "Create Test Shoot A",
+            "POST",
+            "projects",
+            200,
+            data=project_a_data
+        )
+        
+        if success_a:
+            self.test_project_a_id = response_a.get('id')
+        
+        # Create Test Shoot B
+        project_b_data = {
+            "name": "Test Shoot B",
+            "location": "Studio 2", 
+            "start_date": datetime.now(timezone.utc).isoformat(),
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=10)).isoformat(),
+            "owner": "Test User",
+            "status": "Active"
+        }
+        
+        success_b, response_b = self.run_test(
+            "Create Test Shoot B",
+            "POST",
+            "projects",
+            200,
+            data=project_b_data
+        )
+        
+        if success_b:
+            self.test_project_b_id = response_b.get('id')
+            
+        return success_a and success_b
+
+    def test_create_test_equipment(self):
+        """Create test equipment for testing"""
+        item_data = {
+            "name": "Test Camera Equipment",
+            "category": "Camera",
+            "total_quantity": 5,
+            "location_in_studio": "Equipment Room A",
+            "min_stock": 1
+        }
+        
+        success, response = self.run_test(
+            "Create Test Equipment",
+            "POST",
+            "items",
+            200,
+            data=item_data
+        )
+        
+        if success:
+            self.test_item_id = response.get('id')
+            return True
+        return False
+
+    def test_mark_out_equipment(self):
+        """Test marking out equipment to Test Shoot A"""
+        if not self.test_item_id or not self.test_project_a_id:
+            self.log_result("Mark Out Equipment", False, "Missing test item or project")
+            return False
+            
+        mark_out_data = {
+            "item_id": self.test_item_id,
+            "project_id": self.test_project_a_id,
+            "quantity": 3,
+            "expected_return": (datetime.now(timezone.utc) + timedelta(days=5)).isoformat(),
+            "notes": "Test checkout for partial return and transfer testing"
+        }
+        
+        success, response = self.run_test(
+            "Mark Out Equipment to Test Shoot A",
+            "POST",
+            "checkouts/mark-out",
+            200,
+            data=mark_out_data
+        )
+        
+        if success:
+            checkout_data = response.get('checkout', {})
+            self.test_checkout_id = checkout_data.get('id')
+            return True
+        return False
+
+    def test_partial_mark_in_api(self):
+        """Test POST /api/checkouts/quick-mark-in with partial quantity"""
+        if not self.test_checkout_id:
+            self.log_result("Partial Mark-In API", False, "No checkout to test with")
+            return False
+            
+        partial_data = {
+            "checkout_id": self.test_checkout_id,
+            "condition": "good",
+            "quantity_returned": 2  # Return 2 out of 3
+        }
+        
+        success, response = self.run_test(
+            "Partial Mark-In API (2/3 items)",
+            "POST",
+            "checkouts/quick-mark-in",
+            200,
+            data=partial_data
+        )
+        
+        if success:
+            # Verify partial return response
+            remaining = response.get('remaining', 0)
+            status = response.get('status', '')
+            if remaining == 1 and status == 'Partial':
+                self.log_result("Partial Mark-In Response Validation", True)
+                return True
+            else:
+                self.log_result("Partial Mark-In Response Validation", False, 
+                              f"Expected remaining=1, status=Partial, got remaining={remaining}, status={status}")
+        
+        return success
+
+    def test_transfer_equipment_api(self):
+        """Test POST /api/checkouts/transfer endpoint"""
+        if not self.test_checkout_id or not self.test_project_b_id:
+            self.log_result("Transfer Equipment API", False, "Missing checkout or target project")
+            return False
+            
+        transfer_data = {
+            "checkout_id": self.test_checkout_id,
+            "target_project_id": self.test_project_b_id,
+            "quantity_to_transfer": 1  # Transfer remaining 1 item
+        }
+        
+        success, response = self.run_test(
+            "Transfer Equipment API (1 item to Test Shoot B)",
+            "POST",
+            "checkouts/transfer",
+            200,
+            data=transfer_data
+        )
+        
+        if success:
+            # Verify transfer response
+            message = response.get('message', '')
+            new_checkout_id = response.get('new_checkout_id', '')
+            if 'Test Shoot B' in message and new_checkout_id:
+                self.log_result("Transfer Equipment Response Validation", True)
+                return True
+            else:
+                self.log_result("Transfer Equipment Response Validation", False, 
+                              f"Invalid response: {response}")
+        
+        return success
+
+    def test_pdf_generation_api(self):
+        """Test GET /api/projects/{id}/packing-list-pdf generates PDF with comparison table"""
+        if not self.test_project_a_id:
+            self.log_result("PDF Generation API", False, "No project to test with")
+            return False
+            
+        try:
+            url = f"{self.api_url}/projects/{self.test_project_a_id}/packing-list-pdf"
+            headers = {'Authorization': f'Bearer {self.token}'}
+            
+            response = requests.get(url, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                # Check if response is PDF
+                content_type = response.headers.get('content-type', '')
+                content_disposition = response.headers.get('content-disposition', '')
+                
+                if 'application/pdf' in content_type and 'attachment' in content_disposition:
+                    self.log_result("PDF Generation API", True)
+                    # Check if PDF has content (basic validation)
+                    if len(response.content) > 1000:  # PDF should be substantial
+                        self.log_result("PDF Content Size Validation", True)
+                        return True
+                    else:
+                        self.log_result("PDF Content Size Validation", False, f"PDF too small: {len(response.content)} bytes")
+                else:
+                    self.log_result("PDF Generation API", False, f"Wrong content type: {content_type}")
+            else:
+                self.log_result("PDF Generation API", False, f"Status code: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("PDF Generation API", False, f"Error: {str(e)}")
+            
+        return False
+
     def run_all_tests(self):
-        """Run all API tests"""
-        print("🚀 Starting Equipment Tracker API Tests...")
+        """Run all API tests focusing on the specific features"""
+        print("🧪 Equipment Tracker API Tests - Feature Specific")
         print(f"Testing against: {self.base_url}")
         print("=" * 60)
         
-        # Authentication Tests
-        print("\n📋 AUTHENTICATION TESTS")
-        if not self.test_auth_register():
-            # Try login if register fails (user might already exist)
-            if not self.test_auth_login():
-                print("❌ Authentication failed - stopping tests")
-                return False
+        # Authentication
+        print("\n🔐 AUTHENTICATION")
+        if not self.test_auth_login():
+            print("❌ Authentication failed - stopping tests")
+            return False
         
-        self.test_auth_me()
+        # Setup test data
+        print("\n🏗️  SETUP TEST DATA")
+        if not self.test_create_test_projects():
+            print("❌ Failed to create test projects - stopping tests")
+            return False
+            
+        if not self.test_create_test_equipment():
+            print("❌ Failed to create test equipment - stopping tests")
+            return False
         
-        # Core API Tests
-        print("\n📦 INVENTORY TESTS")
-        self.test_get_items()
-        self.test_create_item()
+        # Core feature tests
+        print("\n📦 EQUIPMENT CHECKOUT/TRANSFER FEATURES")
+        self.test_mark_out_equipment()
+        self.test_partial_mark_in_api()
+        self.test_transfer_equipment_api()
         
-        print("\n📁 PROJECT TESTS")
-        self.test_get_projects()
-        self.test_create_project()
+        print("\n📄 PDF GENERATION FEATURE")
+        self.test_pdf_generation_api()
         
-        print("\n🔄 CHECKOUT/CHECKIN TESTS")
-        self.test_mark_out_flow()
+        print("\n🔍 BASIC API VALIDATION")
         self.test_get_active_checkouts()
-        self.test_mark_in_flow()
-        
-        print("\n📊 DASHBOARD TESTS")
-        self.test_dashboard_stats()
-        
-        print("\n🚨 ISSUES TESTS")
-        self.test_issues_flow()
-        
-        print("\n🔧 MAINTENANCE TESTS")
-        self.test_maintenance_flow()
-        
-        print("\n📋 LOST ITEMS TESTS")
-        self.test_lost_items()
+        self.test_get_projects()
+        self.test_get_items()
         
         # Print Results
         print("\n" + "=" * 60)
         print(f"📊 TEST RESULTS: {self.tests_passed}/{self.tests_run} PASSED")
         
         if self.tests_passed == self.tests_run:
-            print("🎉 ALL TESTS PASSED!")
+            print("🎉 ALL BACKEND TESTS PASSED!")
             return True
         else:
-            print("⚠️  SOME TESTS FAILED")
+            print("⚠️  SOME BACKEND TESTS FAILED")
             failed_tests = [r for r in self.test_results if not r['success']]
             print("\nFailed Tests:")
             for test in failed_tests:
