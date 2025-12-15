@@ -18,6 +18,7 @@ export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedCheckoutFilter, setSelectedCheckoutFilter] = useState('all'); // New filter
   const [markOutDialog, setMarkOutDialog] = useState(false);
   const [addItemDialog, setAddItemDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
