@@ -535,53 +535,84 @@ async def quick_mark_in(request: QuickMarkInRequest, current_user: dict = Depend
     return_time = datetime.now(timezone.utc).isoformat()
     
     # Handle partial or full return
-    remaining_qty = checkout["quantity_out"] - checkout.get("quantity_returned", 0)
-    qty_to_return = request.quantity_returned if request.quantity_returned is not None else remaining_qty
+    already_returned = checkout.get("quantity_returned", 0)
+    already_missing = checkout.get("quantity_missing", 0)
+    already_damaged = checkout.get("quantity_damaged", 0)
+    remaining_qty = checkout["quantity_out"] - already_returned - already_missing
     
-    if qty_to_return > remaining_qty:
-        raise HTTPException(status_code=400, detail=f"Cannot return more than {remaining_qty} items")
+    qty_to_process = request.quantity_returned if request.quantity_returned is not None else remaining_qty
     
-    if qty_to_return < 1:
+    if qty_to_process > remaining_qty:
+        raise HTTPException(status_code=400, detail=f"Cannot process more than {remaining_qty} items")
+    
+    if qty_to_process < 1:
         raise HTTPException(status_code=400, detail="Quantity must be at least 1")
     
-    new_quantity_returned = checkout.get("quantity_returned", 0) + qty_to_return
-    is_fully_returned = new_quantity_returned >= checkout["quantity_out"]
+    # Track quantities based on condition
+    new_quantity_returned = already_returned
+    new_quantity_missing = already_missing
+    new_quantity_damaged = already_damaged
+    qty_to_add_back = 0
     
-    packing_duration = None
-    if is_fully_returned and checkout.get("packing_start_time"):
-        start = datetime.fromisoformat(checkout["packing_start_time"].replace('Z', '+00:00'))
-        end = datetime.now(timezone.utc)
-        packing_duration = int((end - start).total_seconds() / 60)
-    
-    if request.condition == "damaged":
+    if request.condition == "good":
+        new_quantity_returned = already_returned + qty_to_process
+        qty_to_add_back = qty_to_process
+    elif request.condition == "damaged":
+        new_quantity_returned = already_returned + qty_to_process
+        new_quantity_damaged = already_damaged + qty_to_process
+        qty_to_add_back = qty_to_process  # Damaged items still return to inventory
         issue = Issue(
             item_id=checkout["item_id"],
             item_name=checkout["item_name"],
-            description=f"Item returned damaged from shoot ({qty_to_return} unit(s))",
+            description=f"Item returned damaged from shoot ({qty_to_process} unit(s))",
             project_id=checkout["project_id"],
             severity="High"
         )
         await db.issues.insert_one(issue.model_dump())
     elif request.condition == "missing":
+        # Missing items are NOT added back to inventory
+        new_quantity_missing = already_missing + qty_to_process
+        qty_to_add_back = 0  # Missing items don't return
         lost_item = LostItem(
             item_id=checkout["item_id"],
             item_name=checkout["item_name"],
             project_id=checkout["project_id"],
             project_name=checkout["project_name"],
-            quantity_lost=qty_to_return
+            quantity_lost=qty_to_process
         )
         await db.lost_items.insert_one(lost_item.model_dump())
-        # Missing items don't get added back to inventory
-        qty_to_return = 0
+    
+    # Check if all items are accounted for (returned + missing = out)
+    total_accounted = new_quantity_returned + new_quantity_missing
+    is_fully_accounted = total_accounted >= checkout["quantity_out"]
+    
+    packing_duration = None
+    if is_fully_accounted and checkout.get("packing_start_time"):
+        start = datetime.fromisoformat(checkout["packing_start_time"].replace('Z', '+00:00'))
+        end = datetime.now(timezone.utc)
+        packing_duration = int((end - start).total_seconds() / 60)
+    
+    # Determine final status
+    if is_fully_accounted:
+        if new_quantity_missing > 0:
+            final_status = "Completed with Missing"
+        elif new_quantity_damaged > 0:
+            final_status = "Completed with Issues"
+        else:
+            final_status = "Completed"
+    else:
+        final_status = "Active"
     
     # Update checkout record
     update_data = {
         "quantity_returned": new_quantity_returned,
+        "quantity_missing": new_quantity_missing,
+        "quantity_damaged": new_quantity_damaged,
         "repack_checklist": {"condition": request.condition, "last_return_time": return_time}
     }
     
-    if is_fully_returned:
-        update_data["status"] = "Completed"
+    if is_fully_accounted:
+        update_data["status"] = final_status
         update_data["return_time"] = return_time
         update_data["packing_complete_time"] = return_time
         update_data["packing_duration_minutes"] = packing_duration
@@ -591,33 +622,34 @@ async def quick_mark_in(request: QuickMarkInRequest, current_user: dict = Depend
         {"$set": update_data}
     )
     
-    # Update inventory - only for non-missing items
-    if request.condition != "missing":
-        new_available = item["quantity_available"] + qty_to_return
-        new_out = item["quantity_out"] - qty_to_return
-        
+    # Update inventory - only add back non-missing items
+    if qty_to_add_back > 0:
+        new_available = item["quantity_available"] + qty_to_add_back
+        new_out = item["quantity_out"] - qty_to_add_back
         await db.items.update_one(
             {"id": checkout["item_id"]},
             {"$set": {"quantity_available": new_available, "quantity_out": new_out}}
         )
-    else:
-        # For missing items, reduce quantity_out but don't increase available
-        new_out = item["quantity_out"] - qty_to_return
-        new_total = item["total_quantity"] - qty_to_return
-        
+    
+    # For missing items, reduce total quantity and quantity_out
+    if request.condition == "missing":
+        new_out = item["quantity_out"] - qty_to_process
+        new_total = item["total_quantity"] - qty_to_process
         await db.items.update_one(
             {"id": checkout["item_id"]},
             {"$set": {"quantity_out": new_out, "total_quantity": new_total}}
         )
     
     return {
-        "message": "Item marked in successfully",
-        "quantity_returned": qty_to_return,
-        "total_returned": new_quantity_returned,
-        "remaining": checkout["quantity_out"] - new_quantity_returned,
-        "packing_duration_minutes": packing_duration,
+        "message": "Item processed successfully",
         "condition": request.condition,
-        "status": "Completed" if is_fully_returned else "Partial"
+        "quantity_processed": qty_to_process,
+        "quantity_returned": new_quantity_returned,
+        "quantity_missing": new_quantity_missing,
+        "quantity_damaged": new_quantity_damaged,
+        "remaining": checkout["quantity_out"] - total_accounted,
+        "packing_duration_minutes": packing_duration,
+        "status": final_status
     }
 
 # Mark In
