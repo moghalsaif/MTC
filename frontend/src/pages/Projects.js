@@ -90,6 +90,37 @@ export default function Projects() {
     }
   };
 
+  const openEditProject = (project) => {
+    setEditingProject(project);
+    setEditProjectForm({
+      name: project.name || '',
+      location: project.location || '',
+      start_date: project.start_date ? project.start_date.split('T')[0] : '',
+      end_date: project.end_date ? project.end_date.split('T')[0] : '',
+      owner: project.owner || '',
+      status: project.status || 'Planning'
+    });
+    setEditProjectDialog(true);
+  };
+
+  const handleUpdateProject = async () => {
+    if (!editProjectForm.name) {
+      toast.error('Please enter project name');
+      return;
+    }
+
+    try {
+      await axios.put(`${API}/projects/${editingProject.id}`, editProjectForm);
+      toast.success('Project updated successfully');
+      setEditProjectDialog(false);
+      setEditingProject(null);
+      fetchProjects();
+    } catch (error) {
+      console.error('Failed to update project:', error);
+      toast.error('Failed to update project');
+    }
+  };
+
   const handleGeneratePDF = async (project) => {
     try {
       toast.info('Generating packing list...');
