@@ -291,51 +291,108 @@ export default function ItemsOut() {
           <div className="text-[#A1A1AA]">Go to Inventory and mark items out for {selectedProject?.name}</div>
         </div>
       ) : checkouts.length === 0 && allProjectCheckouts.length > 0 ? (
-        <div className="bg-[#27272A] border border-emerald-900 rounded-2xl p-8" data-testid="all-items-returned">
-          <div className="text-center mb-6">
-            <CheckCircle2 size={64} className="mx-auto text-emerald-500 mb-4" />
-            <div className="text-emerald-400 text-2xl font-heading font-bold mb-2">✓ 100% INVENTORY VERIFIED</div>
-            <div className="text-white text-lg font-medium mb-2">All items returned for {selectedProject?.name}</div>
-            <div className="text-[#A1A1AA]">
-              {allProjectCheckouts.length} item(s) were assigned to this project and have been verified as returned.
-            </div>
-          </div>
+        // CRITICAL: Check for missing items - cannot show 100% verified if any items are missing
+        (() => {
+          const totalOut = allProjectCheckouts.reduce((sum, c) => sum + c.quantity_out, 0);
+          const totalReturned = allProjectCheckouts.reduce((sum, c) => sum + (c.quantity_returned || 0), 0);
+          const totalMissing = allProjectCheckouts.reduce((sum, c) => sum + (c.quantity_missing || 0), 0);
+          const totalPending = totalOut - totalReturned - totalMissing;
+          const isFullyVerified = totalMissing === 0 && totalPending <= 0;
           
-          {/* Summary of returned items */}
-          <div className="bg-[#1B1B1B] rounded-2xl p-4 mb-6">
-            <div className="text-sm text-[#71717A] uppercase tracking-wider mb-3">Return Summary</div>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold text-white font-data">{allProjectCheckouts.length}</div>
-                <div className="text-xs text-[#A1A1AA]">Items Assigned</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-emerald-400 font-data">
-                  {allProjectCheckouts.reduce((sum, c) => sum + c.quantity_out, 0)}
+          if (totalMissing > 0) {
+            // MISSING ITEMS - VERIFICATION FAILED
+            return (
+              <div className="bg-[#27272A] border border-red-900 rounded-2xl p-8" data-testid="items-missing">
+                <div className="text-center mb-6">
+                  <XCircle size={64} className="mx-auto text-red-500 mb-4" />
+                  <div className="text-red-400 text-2xl font-heading font-bold mb-2">✕ INVENTORY VERIFICATION FAILED</div>
+                  <div className="text-white text-lg font-medium mb-2">{totalMissing} item(s) are MISSING</div>
+                  <div className="text-[#A1A1AA]">
+                    This project cannot be considered verified until all items are accounted for.
+                  </div>
                 </div>
-                <div className="text-xs text-[#A1A1AA]">Total Qty Out</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-emerald-400 font-data">
-                  {allProjectCheckouts.reduce((sum, c) => sum + (c.quantity_returned || 0), 0)}
+                
+                <div className="bg-red-950/30 border border-red-900/50 rounded-2xl p-4 mb-6">
+                  <div className="text-sm text-[#71717A] uppercase tracking-wider mb-3">Verification Summary</div>
+                  <div className="grid grid-cols-4 gap-4 text-center">
+                    <div>
+                      <div className="text-2xl font-bold text-white font-data">{totalOut}</div>
+                      <div className="text-xs text-[#A1A1AA]">Total Out</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-emerald-400 font-data">{totalReturned}</div>
+                      <div className="text-xs text-[#A1A1AA]">Returned</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-red-500 font-data">{totalMissing}</div>
+                      <div className="text-xs text-red-400">MISSING</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-[#F9982E] font-data">{Math.round((totalReturned / totalOut) * 100)}%</div>
+                      <div className="text-xs text-[#A1A1AA]">Verified</div>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-xs text-[#A1A1AA]">Total Returned</div>
+                
+                <div className="text-center">
+                  <div className="text-sm text-red-400 mb-3">Generate report documenting missing items</div>
+                  <Button
+                    onClick={handleGeneratePDF}
+                    data-testid="generate-missing-report-pdf"
+                    className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-wider rounded-2xl shadow-lg"
+                  >
+                    <FileText size={16} className="mr-2" />
+                    Generate Verification Report
+                  </Button>
+                </div>
+              </div>
+            );
+          }
+          
+          // 100% VERIFIED - All items returned, none missing
+          return (
+            <div className="bg-[#27272A] border border-emerald-900 rounded-2xl p-8" data-testid="all-items-returned">
+              <div className="text-center mb-6">
+                <CheckCircle2 size={64} className="mx-auto text-emerald-500 mb-4" />
+                <div className="text-emerald-400 text-2xl font-heading font-bold mb-2">✓ 100% INVENTORY VERIFIED</div>
+                <div className="text-white text-lg font-medium mb-2">All items returned for {selectedProject?.name}</div>
+                <div className="text-[#A1A1AA]">
+                  {allProjectCheckouts.length} item(s) were assigned to this project and have been verified as returned.
+                </div>
+              </div>
+              
+              <div className="bg-[#1B1B1B] rounded-2xl p-4 mb-6">
+                <div className="text-sm text-[#71717A] uppercase tracking-wider mb-3">Return Summary</div>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-white font-data">{allProjectCheckouts.length}</div>
+                    <div className="text-xs text-[#A1A1AA]">Items Assigned</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-emerald-400 font-data">{totalOut}</div>
+                    <div className="text-xs text-[#A1A1AA]">Total Qty Out</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-emerald-400 font-data">{totalReturned}</div>
+                    <div className="text-xs text-[#A1A1AA]">Total Returned</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <div className="text-sm text-[#A1A1AA] mb-3">Generate final confirmation document for audit records</div>
+                <Button
+                  onClick={handleGeneratePDF}
+                  data-testid="generate-confirmation-pdf"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider rounded-2xl shadow-lg"
+                >
+                  <FileText size={16} className="mr-2" />
+                  Generate Return Confirmation PDF
+                </Button>
               </div>
             </div>
-          </div>
-          
-          <div className="text-center">
-            <div className="text-sm text-[#A1A1AA] mb-3">Generate final confirmation document for audit records</div>
-            <Button
-              onClick={handleGeneratePDF}
-              data-testid="generate-confirmation-pdf"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider rounded-2xl shadow-lg"
-            >
-              <FileText size={16} className="mr-2" />
-              Generate Return Confirmation PDF
-            </Button>
-          </div>
-        </div>
+          );
+        })()
       ) : (
         <div className="space-y-6">
           <div className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-6">
