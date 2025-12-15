@@ -1182,7 +1182,108 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         "low_stock_items": low_stock_items
     }
 
-app.include_router(api_router)
+# Licence Management Routes
+@api_router.get("/licences")
+async def get_licences(current_user: dict = Depends(get_current_user)):
+    licences = await db.licences.find({}, {"_id": 0}).to_list(1000)
+    return licences
+
+@api_router.post("/licences")
+async def create_licence(licence_data: LicenceCreate, current_user: dict = Depends(get_current_user)):
+    licence = Licence(**licence_data.model_dump())
+    await db.licences.insert_one(licence.model_dump())
+    return licence
+
+@api_router.get("/licences/{licence_id}")
+async def get_licence(licence_id: str, current_user: dict = Depends(get_current_user)):
+    licence = await db.licences.find_one({"id": licence_id}, {"_id": 0})
+    if not licence:
+        raise HTTPException(status_code=404, detail="Licence not found")
+    return licence
+
+@api_router.put("/licences/{licence_id}")
+async def update_licence(licence_id: str, licence_data: LicenceUpdate, current_user: dict = Depends(get_current_user)):
+    existing = await db.licences.find_one({"id": licence_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Licence not found")
+    
+    update_data = {k: v for k, v in licence_data.model_dump().items() if v is not None}
+    
+    await db.licences.update_one(
+        {"id": licence_id},
+        {"$set": update_data}
+    )
+    
+    updated = await db.licences.find_one({"id": licence_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/licences/{licence_id}")
+async def delete_licence(licence_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.licences.delete_one({"id": licence_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Licence not found")
+    return {"message": "Licence deleted successfully"}
+
+@api_router.get("/licences/stats/summary")
+async def get_licence_stats(current_user: dict = Depends(get_current_user)):
+    licences = await db.licences.find({}, {"_id": 0}).to_list(1000)
+    
+    # Calculate annual spend
+    total_annual = 0
+    by_category = {}
+    by_vendor = {}
+    
+    for licence in licences:
+        if licence.get("status") != "Cancelled":
+            cost = licence.get("cost_per_period", 0)
+            period = licence.get("billing_period", "Monthly")
+            
+            # Convert to annual
+            if period == "Monthly":
+                annual = cost * 12
+            elif period == "Quarterly":
+                annual = cost * 4
+            else:  # Yearly
+                annual = cost
+            
+            total_annual += annual
+            
+            # Group by category
+            cat = licence.get("category", "Other")
+            by_category[cat] = by_category.get(cat, 0) + annual
+            
+            # Group by vendor
+            vendor = licence.get("vendor", "Unknown")
+            by_vendor[vendor] = by_vendor.get(vendor, 0) + annual
+    
+    # Check for expiring soon (within 30 days)
+    now = datetime.now(timezone.utc)
+    expiring_soon = []
+    for licence in licences:
+        if licence.get("status") == "Active" and licence.get("renewal_date"):
+            try:
+                renewal = datetime.fromisoformat(licence["renewal_date"].replace('Z', '+00:00'))
+                if renewal.tzinfo is None:
+                    renewal = renewal.replace(tzinfo=timezone.utc)
+                days_until = (renewal - now).days
+                if 0 <= days_until <= 30:
+                    expiring_soon.append({
+                        "id": licence["id"],
+                        "name": licence["name"],
+                        "renewal_date": licence["renewal_date"],
+                        "days_until": days_until
+                    })
+            except:
+                pass
+    
+    return {
+        "total_annual_spend": round(total_annual, 2),
+        "total_licences": len(licences),
+        "active_licences": len([l for l in licences if l.get("status") == "Active"]),
+        "by_category": by_category,
+        "by_vendor": by_vendor,
+        "expiring_soon": expiring_soon
+    }
 
 app.add_middleware(
     CORSMiddleware,
