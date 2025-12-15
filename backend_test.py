@@ -846,28 +846,32 @@ class EquipmentTrackerAPITester:
         return success
 
     def test_licences_stats_api(self):
-        """Test GET /api/licences/stats/summary endpoint"""
-        # First create some test licences for stats
+        """Test GET /api/licences/stats/summary endpoint with INR amounts"""
+        # First create some test licences for stats with INR amounts
         test_licences = [
             {
                 "name": "DaVinci Resolve Studio",
                 "vendor": "Blackmagic Design",
                 "category": "Software",
-                "cost_per_period": 295.00,
+                "cost_per_period": 24500.00,  # INR yearly
                 "billing_period": "Yearly",
                 "renewal_date": (datetime.now(timezone.utc) + timedelta(days=180)).isoformat(),
                 "status": "Active",
-                "seats": 1
+                "seats": 1,
+                "account_email": "davinci@company.com",
+                "account_password": "davinci123"
             },
             {
                 "name": "Frame.io",
                 "vendor": "Frame.io",
                 "category": "Service",
-                "cost_per_period": 50.00,
+                "cost_per_period": 4200.00,  # INR monthly
                 "billing_period": "Monthly",
                 "renewal_date": (datetime.now(timezone.utc) + timedelta(days=15)).isoformat(),
                 "status": "Active",
-                "seats": 3
+                "seats": 3,
+                "account_email": "frameio@company.com",
+                "account_password": "frame456"
             }
         ]
         
@@ -903,13 +907,13 @@ class EquipmentTrackerAPITester:
             
             self.log_result("Licence Stats Structure", True)
             
-            # Verify calculations
+            # Verify calculations (should be in INR)
             total_annual = stats.get('total_annual_spend', 0)
             if total_annual > 0:
-                self.log_result("Annual Spend Calculation", True)
-                print(f"   Total Annual Spend: ${total_annual}")
+                self.log_result("Annual Spend Calculation (INR)", True)
+                print(f"   Total Annual Spend: ₹{total_annual}")
             else:
-                self.log_result("Annual Spend Calculation", False, "No annual spend calculated")
+                self.log_result("Annual Spend Calculation (INR)", False, "No annual spend calculated")
             
             # Check expiring soon
             expiring_soon = stats.get('expiring_soon', [])
