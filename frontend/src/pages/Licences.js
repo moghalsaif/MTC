@@ -756,10 +756,10 @@ export default function Licences() {
             </div>
             <div>
               <Label className="text-xs mb-1 block">Assigned Project</Label>
-              <Select value={newAssetForm.project_id} onValueChange={(val) => setNewAssetForm({...newAssetForm, project_id: val})}>
+              <Select value={newAssetForm.project_id} onValueChange={(val) => setNewAssetForm({...newAssetForm, project_id: val === 'none' ? '' : val})}>
                 <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] h-9 text-sm"><SelectValue placeholder="Select project (optional)" /></SelectTrigger>
                 <SelectContent className="bg-[#27272A] border-[#3F3F46]">
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -829,10 +829,10 @@ export default function Licences() {
             </div>
             <div>
               <Label className="text-xs mb-1 block">Assigned Project</Label>
-              <Select value={editAssetForm.project_id} onValueChange={(val) => setEditAssetForm({...editAssetForm, project_id: val})}>
+              <Select value={editAssetForm.project_id || 'none'} onValueChange={(val) => setEditAssetForm({...editAssetForm, project_id: val === 'none' ? '' : val})}>
                 <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] h-9 text-sm"><SelectValue placeholder="Select project" /></SelectTrigger>
                 <SelectContent className="bg-[#27272A] border-[#3F3F46]">
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
