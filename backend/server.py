@@ -1285,6 +1285,8 @@ async def get_licence_stats(current_user: dict = Depends(get_current_user)):
         "expiring_soon": expiring_soon
     }
 
+app.include_router(api_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
