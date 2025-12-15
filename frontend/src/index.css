@@ -101,6 +101,46 @@ code {
     z-index: 1;
 }
 
+/* Speed trails texture for racing feel */
+.speed-trails {
+    position: relative;
+    overflow: hidden;
+}
+
+.speed-trails::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        linear-gradient(90deg, transparent 0%, transparent 98%, rgba(249,152,46,0.03) 98%, rgba(249,152,46,0.03) 100%),
+        linear-gradient(90deg, transparent 0%, transparent 94%, rgba(139,92,246,0.02) 94%, rgba(139,92,246,0.02) 100%),
+        linear-gradient(90deg, transparent 0%, transparent 89%, rgba(255,255,255,0.02) 89%, rgba(255,255,255,0.02) 100%),
+        linear-gradient(90deg, transparent 0%, transparent 96%, rgba(249,152,46,0.02) 96%, rgba(249,152,46,0.02) 100%),
+        linear-gradient(90deg, transparent 0%, transparent 92%, rgba(161,161,170,0.015) 92%, rgba(161,161,170,0.015) 100%);
+    background-size: 
+        200px 100%,
+        150px 100%,
+        100px 100%,
+        80px 100%,
+        120px 100%;
+    animation: speedTrails 20s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.8;
+}
+
+@keyframes speedTrails {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-200px);
+    }
+}
+
 @layer base {
     [data-debug-wrapper="true"] {
         display: contents !important;
