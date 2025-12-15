@@ -104,60 +104,61 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1B1B1B] noise-bg">
-      <nav className="border-b border-[#3F3F46] bg-[#27272A]">
-        <div className="max-w-[1920px] mx-auto px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-12">
-              <h1 className="font-heading text-xl font-black text-white tracking-tight" data-testid="app-title">
-                MACH TRAFFIC CONTROLLER
-              </h1>
-              <div className="flex space-x-2">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                        isActive(item.path)
-                          ? 'bg-[#F9982E] text-black shadow-lg'
-                          : 'text-[#A1A1AA] hover:text-white hover:bg-[#3F3F46]'
-                      }`}
-                    >
-                      <Icon size={16} />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
+    <div className="min-h-screen bg-[#1B1B1B] noise-bg speed-trails">
+      <nav className="border-b border-[#3F3F46]/50 bg-[#1B1B1B]/95 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-[1920px] mx-auto px-6">
+          {/* Top row - Logo and Actions */}
+          <div className="flex items-center justify-between py-3 border-b border-[#3F3F46]/30">
+            <h1 className="font-heading text-lg font-black text-white tracking-tight" data-testid="app-title">
+              MACH TRAFFIC CONTROLLER
+            </h1>
+            <div className="flex items-center gap-3">
               <button
                 onClick={openTransferDialog}
                 disabled={loadingData}
                 data-testid="transfer-button"
-                className="flex items-center space-x-2 px-4 py-2 rounded-2xl text-white bg-[#8B5CF6] hover:bg-[#8B5CF6]/90 transition-colors font-medium text-sm disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white bg-[#8B5CF6]/80 hover:bg-[#8B5CF6] transition-all text-xs font-medium disabled:opacity-50"
                 title="Transfer Equipment"
               >
-                <ArrowRightLeft size={16} />
+                <ArrowRightLeft size={14} />
                 <span>Transfer</span>
               </button>
-              <span className="text-sm text-[#A1A1AA]" data-testid="user-name">{user?.name}</span>
+              <div className="h-4 w-px bg-[#3F3F46]" />
+              <span className="text-xs text-[#71717A]" data-testid="user-name">{user?.name}</span>
               <button
                 onClick={logout}
                 data-testid="logout-button"
-                className="px-4 py-2 rounded-2xl text-white bg-[#3F3F46] hover:bg-[#EF4444] transition-colors font-medium text-sm"
+                className="px-3 py-1.5 rounded-lg text-[#A1A1AA] hover:text-white hover:bg-[#EF4444]/80 transition-all text-xs font-medium"
                 title="Logout"
               >
                 Logout
               </button>
             </div>
           </div>
+          {/* Bottom row - Navigation */}
+          <div className="flex items-center gap-1 py-2 overflow-x-auto scrollbar-hide">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                    isActive(item.path)
+                      ? 'bg-[#F9982E] text-black'
+                      : 'text-[#71717A] hover:text-white hover:bg-[#27272A]'
+                  }`}
+                >
+                  <Icon size={14} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </nav>
-      <main className="max-w-[1920px] mx-auto px-8 py-8">
+      <main className="max-w-[1920px] mx-auto px-6 py-6 relative z-10">
         <Outlet />
       </main>
       
