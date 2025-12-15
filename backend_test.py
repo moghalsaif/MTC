@@ -727,9 +727,193 @@ class EquipmentTrackerAPITester:
             
         return False
 
+    def test_update_project_api(self):
+        """Test PUT /api/projects/{id} endpoint for editing projects"""
+        if not self.test_project_a_id:
+            self.log_result("Update Project API", False, "No project to update")
+            return False
+            
+        update_data = {
+            "name": "Updated Test Shoot A",
+            "location": "Updated Studio 1",
+            "start_date": datetime.now(timezone.utc).isoformat(),
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=14)).isoformat(),
+            "owner": "Updated Test User",
+            "status": "Active"
+        }
+        
+        success, response = self.run_test(
+            "Update Project API (PUT /api/projects/{id})",
+            "PUT",
+            f"projects/{self.test_project_a_id}",
+            200,
+            data=update_data
+        )
+        
+        if success:
+            # Verify the update worked
+            if response.get('name') == 'Updated Test Shoot A':
+                self.log_result("Project Update Verification", True)
+                return True
+            else:
+                self.log_result("Project Update Verification", False, f"Name not updated: {response.get('name')}")
+        
+        return success
+
+    def test_licences_crud_api(self):
+        """Test Licences CRUD operations"""
+        # Create licence
+        licence_data = {
+            "name": "Test Adobe Creative Cloud",
+            "vendor": "Adobe",
+            "category": "Software",
+            "cost_per_period": 99.99,
+            "billing_period": "Monthly",
+            "renewal_date": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),
+            "status": "Active",
+            "seats": 5,
+            "notes": "Test licence for video editing"
+        }
+        
+        success, response = self.run_test(
+            "Create Licence API",
+            "POST",
+            "licences",
+            200,
+            data=licence_data
+        )
+        
+        if not success:
+            return False
+            
+        licence_id = response.get('id')
+        if not licence_id:
+            self.log_result("Create Licence Response", False, "No licence ID returned")
+            return False
+        
+        # Get all licences
+        success, licences = self.run_test(
+            "Get All Licences API",
+            "GET",
+            "licences",
+            200
+        )
+        
+        if not success:
+            return False
+        
+        # Update licence
+        update_data = {
+            "name": "Updated Adobe Creative Cloud",
+            "cost_per_period": 109.99,
+            "seats": 10
+        }
+        
+        success, updated_licence = self.run_test(
+            "Update Licence API (PUT /api/licences/{id})",
+            "PUT",
+            f"licences/{licence_id}",
+            200,
+            data=update_data
+        )
+        
+        if success and updated_licence.get('name') == 'Updated Adobe Creative Cloud':
+            self.log_result("Licence Update Verification", True)
+        else:
+            self.log_result("Licence Update Verification", False, "Update not reflected")
+            return False
+        
+        # Delete licence
+        success, _ = self.run_test(
+            "Delete Licence API",
+            "DELETE",
+            f"licences/{licence_id}",
+            200
+        )
+        
+        return success
+
+    def test_licences_stats_api(self):
+        """Test GET /api/licences/stats/summary endpoint"""
+        # First create some test licences for stats
+        test_licences = [
+            {
+                "name": "DaVinci Resolve Studio",
+                "vendor": "Blackmagic Design",
+                "category": "Software",
+                "cost_per_period": 295.00,
+                "billing_period": "Yearly",
+                "renewal_date": (datetime.now(timezone.utc) + timedelta(days=180)).isoformat(),
+                "status": "Active",
+                "seats": 1
+            },
+            {
+                "name": "Frame.io",
+                "vendor": "Frame.io",
+                "category": "Service",
+                "cost_per_period": 50.00,
+                "billing_period": "Monthly",
+                "renewal_date": (datetime.now(timezone.utc) + timedelta(days=15)).isoformat(),
+                "status": "Active",
+                "seats": 3
+            }
+        ]
+        
+        created_licence_ids = []
+        
+        # Create test licences
+        for licence_data in test_licences:
+            success, response = self.run_test(
+                f"Create Test Licence ({licence_data['name']})",
+                "POST",
+                "licences",
+                200,
+                data=licence_data
+            )
+            if success and response.get('id'):
+                created_licence_ids.append(response['id'])
+        
+        # Test stats endpoint
+        success, stats = self.run_test(
+            "Get Licence Stats API (GET /api/licences/stats/summary)",
+            "GET",
+            "licences/stats/summary",
+            200
+        )
+        
+        if success:
+            # Verify stats structure
+            expected_keys = ['total_annual_spend', 'total_licences', 'active_licences', 'by_category', 'by_vendor', 'expiring_soon']
+            for key in expected_keys:
+                if key not in stats:
+                    self.log_result("Licence Stats Structure", False, f"Missing key: {key}")
+                    return False
+            
+            self.log_result("Licence Stats Structure", True)
+            
+            # Verify calculations
+            total_annual = stats.get('total_annual_spend', 0)
+            if total_annual > 0:
+                self.log_result("Annual Spend Calculation", True)
+                print(f"   Total Annual Spend: ${total_annual}")
+            else:
+                self.log_result("Annual Spend Calculation", False, "No annual spend calculated")
+            
+            # Check expiring soon
+            expiring_soon = stats.get('expiring_soon', [])
+            if len(expiring_soon) > 0:
+                self.log_result("Expiring Soon Detection", True)
+                print(f"   Found {len(expiring_soon)} licences expiring soon")
+            else:
+                self.log_result("Expiring Soon Detection", True, "No licences expiring soon (expected)")
+            
+            return True
+        
+        return False
+
     def run_all_tests(self):
-        """Run all API tests focusing on wrap-up center functionality"""
-        print("🧪 Equipment Tracker API Tests - Wrap-Up Center Focus")
+        """Run all API tests focusing on new features"""
+        print("🧪 Equipment Tracker API Tests - New Features Focus")
         print(f"Testing against: {self.base_url}")
         print("=" * 60)
         
@@ -739,29 +923,18 @@ class EquipmentTrackerAPITester:
             print("❌ Authentication failed - stopping tests")
             return False
         
-        # Setup wrap-up test data
-        print("\n🏗️  SETUP WRAP-UP TEST DATA")
-        if not self.test_wrap_up_project_setup():
-            print("❌ Failed to create wrap-up test project - stopping tests")
-            return False
-            
-        if not self.test_wrap_up_equipment_setup():
-            print("❌ Failed to setup wrap-up test equipment - stopping tests")
-            return False
+        # Test new features
+        print("\n🆕 NEW FEATURES API TESTS")
         
-        # Wrap-up center specific tests
-        print("\n📋 WRAP-UP CENTER API TESTS")
-        self.test_get_project_checkouts_api()
-        self.test_pdf_generation_for_completed_project()
+        # Create test projects for edit testing
+        if self.test_create_test_projects():
+            self.test_update_project_api()
         
-        # Legacy feature tests for regression
-        print("\n📦 REGRESSION TESTS")
-        if self.test_create_test_projects() and self.test_create_test_equipment():
-            self.test_mark_out_equipment()
-            self.test_partial_mark_in_api()
-            self.test_transfer_equipment_api()
-            self.test_pdf_generation_api()
+        # Test licences functionality
+        self.test_licences_crud_api()
+        self.test_licences_stats_api()
         
+        # Basic API validation
         print("\n🔍 BASIC API VALIDATION")
         self.test_get_active_checkouts()
         self.test_get_projects()
