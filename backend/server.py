@@ -405,6 +405,23 @@ async def delete_project(project_id: str, current_user: dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Project not found")
     return {"message": "Project deleted successfully"}
 
+# Update Project
+@api_router.put("/projects/{project_id}")
+async def update_project(project_id: str, project_data: ProjectCreate, current_user: dict = Depends(get_current_user)):
+    existing = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    update_data = {k: v for k, v in project_data.model_dump().items() if v is not None}
+    
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": update_data}
+    )
+    
+    updated = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    return updated
+
 # Mark Out
 @api_router.post("/checkouts/mark-out")
 async def mark_out(request: MarkOutRequest, current_user: dict = Depends(get_current_user)):
