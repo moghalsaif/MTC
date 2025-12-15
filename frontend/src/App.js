@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import ItemsOut from './pages/ItemsOut';
 import Projects from './pages/Projects';
+import Licences from './pages/Licences';
 import Issues from './pages/Issues';
 import LostItems from './pages/LostItems';
 import Maintenance from './pages/Maintenance';
@@ -43,6 +44,7 @@ function AppRoutes() {
         <Route path="inventory" element={<Inventory />} />
         <Route path="items-out" element={<ItemsOut />} />
         <Route path="projects" element={<Projects />} />
+        <Route path="licences" element={<Licences />} />
         <Route path="issues" element={<Issues />} />
         <Route path="lost-items" element={<LostItems />} />
         <Route path="maintenance" element={<Maintenance />} />
