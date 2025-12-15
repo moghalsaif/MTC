@@ -260,7 +260,11 @@ export default function Inventory() {
                   <td className="py-4 px-4 text-white font-f1 text-lg">{item.name}</td>
                   <td className="py-4 px-4 text-[#A1A1AA]">{item.category}</td>
                   <td className="py-4 px-4 text-center font-data text-white font-bold">{item.quantity_available}</td>
-                  <td className="py-4 px-4 text-center font-data text-[#F9982E] font-bold">{item.quantity_out}</td>
+                  <td className="py-4 px-4 text-center font-data font-bold">
+                    <span className={item.quantity_out > 0 ? 'text-emerald-400' : 'text-[#71717A]'}>
+                      {item.quantity_out}
+                    </span>
+                  </td>
                   <td className="py-4 px-4 text-center font-data text-[#A1A1AA]">{item.total_quantity}</td>
                   <td className="py-4 px-4 text-center">
                     <span className={`font-mono text-xs uppercase tracking-widest px-2 py-1 rounded-2xl border ${getStatusBadge(item.status)}`}>
@@ -272,9 +276,13 @@ export default function Inventory() {
                       onClick={() => openMarkOut(item)}
                       data-testid={`mark-out-${item.id}`}
                       disabled={item.quantity_available === 0 || item.status !== 'Available'}
-                      className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-2xl text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`font-bold uppercase tracking-wider rounded-2xl text-xs disabled:opacity-50 disabled:cursor-not-allowed ${
+                        item.quantity_out > 0 
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                          : 'bg-[#F9982E] hover:bg-[#F9982E]/90 text-black'
+                      }`}
                     >
-                      Mark Out
+                      {item.quantity_out > 0 ? 'Add More' : 'Mark Out'}
                     </Button>
                   </td>
                 </tr>
