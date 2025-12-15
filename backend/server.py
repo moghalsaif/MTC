@@ -1022,54 +1022,59 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
     elements.append(project_table)
     elements.append(Spacer(1, 0.4 * inch))
     
-    # EQUIPMENT COMPARISON TABLE - Shows Out vs Returned vs Remaining
+    # EQUIPMENT COMPARISON TABLE - Shows Out vs Returned vs Missing vs Remaining
     elements.append(Paragraph("EQUIPMENT STATUS COMPARISON", heading_style))
     
     if not all_checkouts:
         elements.append(Paragraph("No equipment records for this project.", styles['Normal']))
     else:
-        # New comparison table with status
-        equipment_data = [['Item Name', 'Category', 'Qty Out', 'Qty Returned', 'Qty Remaining', 'Status']]
+        # Updated comparison table with missing column
+        equipment_data = [['Item Name', 'Qty Out', 'Returned', 'Missing', 'Pending', 'Status']]
         
         total_out = 0
         total_returned = 0
-        total_remaining = 0
+        total_missing = 0
+        total_pending = 0
         
         for checkout in all_checkouts:
             item = await db.items.find_one({"id": checkout['item_id']}, {"_id": 0})
             qty_out = checkout['quantity_out']
             qty_returned = checkout.get('quantity_returned', 0)
-            qty_remaining = qty_out - qty_returned
+            qty_missing = checkout.get('quantity_missing', 0)
+            qty_pending = qty_out - qty_returned - qty_missing
             
             total_out += qty_out
             total_returned += qty_returned
-            total_remaining += qty_remaining
+            total_missing += qty_missing
+            total_pending += max(0, qty_pending)
             
-            # Determine status
+            # Determine status - CRITICAL: Missing items = NOT VERIFIED
             if checkout['status'] == 'Transferred':
                 status = 'TRANSFERRED'
-            elif qty_remaining == 0:
-                status = '✓ COMPLETE'
-            elif qty_returned > 0:
-                status = '⚠ PARTIAL'
-            else:
+            elif qty_missing > 0:
+                status = '✕ MISSING'
+            elif qty_pending > 0:
                 status = '○ PENDING'
+            elif checkout.get('quantity_damaged', 0) > 0:
+                status = '⚠ DAMAGED'
+            else:
+                status = '✓ COMPLETE'
             
             equipment_data.append([
                 checkout['item_name'],
-                item['category'] if item else 'N/A',
                 str(qty_out),
                 str(qty_returned),
-                str(qty_remaining),
+                str(qty_missing) if qty_missing > 0 else '—',
+                str(qty_pending) if qty_pending > 0 else '—',
                 status
             ])
         
-        equipment_table = Table(equipment_data, colWidths=[1.8*inch, 1*inch, 0.7*inch, 0.9*inch, 0.9*inch, 1*inch])
+        equipment_table = Table(equipment_data, colWidths=[2*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch, 1*inch])
         equipment_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F9982E')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('ALIGN', (2, 0), (5, -1), 'CENTER'),
+            ('ALIGN', (1, 0), (5, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
             ('FONTSIZE', (0, 0), (-1, 0), 9),
@@ -1083,16 +1088,20 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
         elements.append(equipment_table)
         elements.append(Spacer(1, 0.3 * inch))
         
-        # Summary with comparison
-        completion_pct = round((total_returned / total_out * 100), 1) if total_out > 0 else 0
-        is_fully_returned = total_remaining == 0 and total_out > 0
+        # Summary with comparison - CRITICAL: Show missing separately
+        verified_returned = total_returned  # Only items actually back
+        completion_pct = round((verified_returned / total_out * 100), 1) if total_out > 0 else 0
+        
+        # CRITICAL FIX: Only 100% verified if NO missing items AND all returned
+        is_fully_verified = total_missing == 0 and total_pending == 0 and total_out > 0
         
         summary_data = [
             ['Total Items Checked Out:', str(len(all_checkouts))],
             ['Total Quantity Out:', str(total_out)],
             ['Total Quantity Returned:', str(total_returned)],
-            ['Total Remaining:', str(total_remaining)],
-            ['Completion:', f'{completion_pct}%']
+            ['Total Quantity Missing:', str(total_missing)],
+            ['Total Pending Return:', str(total_pending)],
+            ['Verified Completion:', f'{completion_pct}%']
         ]
         
         summary_table = Table(summary_data, colWidths=[2.5*inch, 1*inch])
@@ -1106,7 +1115,10 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
             ('FONTSIZE', (0, 0), (-1, -1), 10),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
             ('TOPPADDING', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E5E5'))
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E5E5')),
+            # Highlight missing row in red if any missing
+            ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#FEE2E2') if total_missing > 0 else colors.HexColor('#F5F5F5')),
+            ('TEXTCOLOR', (1, 3), (1, 3), colors.HexColor('#DC2626') if total_missing > 0 else colors.HexColor('#1B1B1B'))
         ]))
         
         elements.append(summary_table)
