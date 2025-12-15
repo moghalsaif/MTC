@@ -266,9 +266,19 @@ export default function Licences() {
       'Software': '#8B5CF6', 'Hardware': '#F59E0B', 'Service': '#10B981',
       'Cloud': '#3B82F6', 'Support': '#EC4899', 'Other': '#71717A',
       'Stock Footage': '#06B6D4', '3D Models': '#F97316', 'Sound Effects': '#A855F7',
-      'Music': '#EF4444', 'Templates': '#84CC16', 'Plugins': '#6366F1'
+      'Music': '#EF4444', 'Templates': '#84CC16', 'Plugins': '#6366F1',
+      'Environments': '#14B8A6', 'Motion Capture': '#F43F5E'
     };
     return colors[category] || colors['Other'];
+  };
+
+  const getLicenceTypeColor = (type) => {
+    const colors = {
+      'Monthly': '#3B82F6',
+      'Annual': '#8B5CF6',
+      'Lifetime': '#10B981'
+    };
+    return colors[type] || '#71717A';
   };
 
   // INR Formatter
