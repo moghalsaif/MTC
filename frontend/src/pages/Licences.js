@@ -307,22 +307,37 @@ export default function Licences() {
         </div>
       </div>
 
-      {/* Total Annual Spend */}
-      <div className="bg-gradient-to-r from-[#8B5CF6]/10 via-[#1B1B1B] to-[#F9982E]/10 border border-[#3F3F46] rounded-2xl p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Annual Subscription Spend</div>
-            <div className="text-white text-3xl font-black font-data">{formatINR(totalAnnual)}</div>
-            <div className="text-[#52525B] text-xs mt-1">{stats?.active_licences || 0} active subscriptions</div>
+      {/* Spend Overview - SEPARATED */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Subscription Spend Card */}
+        <div className="bg-gradient-to-br from-[#8B5CF6]/20 to-[#1B1B1B] border border-[#8B5CF6]/30 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-[#8B5CF6] text-xs uppercase tracking-wider font-medium">Recurring Subscriptions</div>
+            <CreditCard size={20} className="text-[#8B5CF6]" />
           </div>
-          <div>
-            <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Total Asset Value</div>
-            <div className="text-white text-3xl font-black font-data">{formatINR(totalAssetValue)}</div>
-            <div className="text-[#52525B] text-xs mt-1">{assets.length} purchased packs</div>
+          <div className="text-white text-3xl font-black font-data">{formatINR(totalAnnual)}</div>
+          <div className="text-[#71717A] text-xs mt-2">{stats?.active_licences || 0} active subscriptions • Annual cost</div>
+          <div className="mt-4 pt-4 border-t border-[#3F3F46]/50">
+            <div className="flex justify-between text-xs">
+              <span className="text-[#71717A]">Monthly:</span>
+              <span className="text-white font-data">{formatINR(totalAnnual / 12)}</span>
+            </div>
           </div>
-          <div>
-            <div className="text-[#71717A] text-xs uppercase tracking-wider mb-1">Combined Investment</div>
-            <div className="text-[#F9982E] text-3xl font-black font-data">{formatINR(totalAnnual + totalAssetValue)}</div>
+        </div>
+        
+        {/* Asset Value Card */}
+        <div className="bg-gradient-to-br from-[#F9982E]/20 to-[#1B1B1B] border border-[#F9982E]/30 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-[#F9982E] text-xs uppercase tracking-wider font-medium">Purchased Assets</div>
+            <FolderOpen size={20} className="text-[#F9982E]" />
+          </div>
+          <div className="text-white text-3xl font-black font-data">{formatINR(totalAssetValue)}</div>
+          <div className="text-[#71717A] text-xs mt-2">{assets.length} asset packs • One-time purchases</div>
+          <div className="mt-4 pt-4 border-t border-[#3F3F46]/50">
+            <div className="flex justify-between text-xs">
+              <span className="text-[#71717A]">Avg. per pack:</span>
+              <span className="text-white font-data">{assets.length > 0 ? formatINR(totalAssetValue / assets.length) : '₹0'}</span>
+            </div>
           </div>
         </div>
       </div>
