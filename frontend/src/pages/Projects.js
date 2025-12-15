@@ -202,6 +202,14 @@ export default function Projects() {
                 </div>
                 <div className="flex space-x-2">
                   <button
+                    onClick={() => openEditProject(project)}
+                    data-testid={`edit-project-${project.id}`}
+                    className="p-2 text-[#8B5CF6] hover:bg-[#8B5CF6]/10 rounded-2xl transition-colors"
+                    title="Edit project"
+                  >
+                    <Pencil size={18} />
+                  </button>
+                  <button
                     onClick={() => handleGeneratePDF(project)}
                     data-testid={`generate-pdf-${project.id}`}
                     className="p-2 text-[#F9982E] hover:bg-[#F9982E]/10 rounded-2xl transition-colors"
