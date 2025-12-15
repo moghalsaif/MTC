@@ -405,6 +405,7 @@ export default function Licences() {
                 <thead className="bg-[#1B1B1B]">
                   <tr className="border-b border-[#3F3F46]">
                     <th className="text-left py-3 px-4 text-xs font-medium text-[#71717A] uppercase">Name</th>
+                    <th className="text-left py-3 px-4 text-xs font-medium text-[#71717A] uppercase">Type</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-[#71717A] uppercase">Credentials</th>
                     <th className="text-right py-3 px-4 text-xs font-medium text-[#71717A] uppercase">Cost</th>
                     <th className="text-right py-3 px-4 text-xs font-medium text-[#71717A] uppercase">Annual</th>
@@ -425,6 +426,11 @@ export default function Licences() {
                           </span>
                           {licence.seats && <span className="text-[#52525B] text-xs">{licence.seats} seats</span>}
                         </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium" style={{ backgroundColor: `${getLicenceTypeColor(licence.licence_type)}20`, color: getLicenceTypeColor(licence.licence_type) }}>
+                          {licence.licence_type || 'Annual'}
+                        </span>
                       </td>
                       <td className="py-3 px-4">
                         {licence.account_email ? (
