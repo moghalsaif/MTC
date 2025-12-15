@@ -949,7 +949,7 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
     
     # Get ALL checkouts for this project (active + completed) for comparison
     all_checkouts = await db.checkouts.find(
-        {"project_id": project_id, "status": {"$in": ["Active", "Completed", "Transferred"]}}, 
+        {"project_id": project_id, "status": {"$in": ["Active", "Completed", "Completed with Missing", "Completed with Issues", "Transferred"]}}, 
         {"_id": 0}
     ).to_list(1000)
     
