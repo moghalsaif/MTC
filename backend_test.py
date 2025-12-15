@@ -1037,6 +1037,9 @@ class EquipmentTrackerAPITester:
         self.test_licences_crud_api()
         self.test_licences_stats_api()
         
+        # Test assets functionality
+        self.test_assets_crud_api()
+        
         # Basic API validation
         print("\n🔍 BASIC API VALIDATION")
         self.test_get_active_checkouts()
