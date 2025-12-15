@@ -198,6 +198,42 @@ class Issue(BaseModel):
 class IssueCreate(BaseModel):
     item_id: str
     description: str
+
+# Licence Management Models
+class Licence(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    vendor: str
+    category: str  # Software, Hardware, Service, etc.
+    cost_per_period: float
+    billing_period: str  # Monthly, Quarterly, Yearly
+    renewal_date: str
+    status: str = "Active"  # Active, Expiring Soon, Expired, Cancelled
+    seats: Optional[int] = None  # Number of licences/seats
+    notes: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class LicenceCreate(BaseModel):
+    name: str
+    vendor: str
+    category: str
+    cost_per_period: float
+    billing_period: str
+    renewal_date: str
+    status: Optional[str] = "Active"
+    seats: Optional[int] = None
+    notes: Optional[str] = None
+
+class LicenceUpdate(BaseModel):
+    name: Optional[str] = None
+    vendor: Optional[str] = None
+    category: Optional[str] = None
+    cost_per_period: Optional[float] = None
+    billing_period: Optional[str] = None
+    renewal_date: Optional[str] = None
+    status: Optional[str] = None
+    seats: Optional[int] = None
+    notes: Optional[str] = None
     severity: Optional[str] = "Medium"
     assigned_to: Optional[str] = None
     project_id: Optional[str] = None
