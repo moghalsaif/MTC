@@ -927,6 +927,93 @@ class EquipmentTrackerAPITester:
         
         return False
 
+    def test_assets_crud_api(self):
+        """Test Assets CRUD operations"""
+        # Get projects for assignment
+        success, projects = self.run_test("Get Projects for Asset Assignment", "GET", "projects", 200)
+        if not success or not projects:
+            project_id = None
+        else:
+            project_id = projects[0].get('id')
+        
+        # Create asset
+        asset_data = {
+            "name": "Test Stock Footage Pack",
+            "vendor": "Envato Elements",
+            "category": "Stock Footage",
+            "purchase_date": datetime.now(timezone.utc).isoformat(),
+            "purchase_price": 15000.00,  # INR amount
+            "project_id": project_id,
+            "storage_location": "//NAS/Assets/Footage/Test_Pack",
+            "licence_type": "Royalty-free",
+            "notes": "Test asset pack for video production"
+        }
+        
+        success, response = self.run_test(
+            "Create Asset API",
+            "POST",
+            "assets",
+            200,
+            data=asset_data
+        )
+        
+        if not success:
+            return False
+            
+        asset_id = response.get('id')
+        if not asset_id:
+            self.log_result("Create Asset Response", False, "No asset ID returned")
+            return False
+        
+        # Verify storage location is stored
+        if response.get('storage_location') == '//NAS/Assets/Footage/Test_Pack':
+            self.log_result("Asset Storage Location", True)
+        else:
+            self.log_result("Asset Storage Location", False, "Storage location not stored properly")
+        
+        # Get all assets
+        success, assets = self.run_test(
+            "Get All Assets API",
+            "GET",
+            "assets",
+            200
+        )
+        
+        if not success:
+            return False
+        
+        # Update asset
+        update_data = {
+            "name": "Updated Stock Footage Pack",
+            "purchase_price": 18000.00,  # Updated INR amount
+            "storage_location": "//NAS/Assets/Footage/Updated_Pack",
+            "notes": "Updated test asset pack"
+        }
+        
+        success, updated_asset = self.run_test(
+            "Update Asset API (PUT /api/assets/{id})",
+            "PUT",
+            f"assets/{asset_id}",
+            200,
+            data=update_data
+        )
+        
+        if success and updated_asset.get('name') == 'Updated Stock Footage Pack':
+            self.log_result("Asset Update Verification", True)
+        else:
+            self.log_result("Asset Update Verification", False, "Update not reflected")
+            return False
+        
+        # Delete asset
+        success, _ = self.run_test(
+            "Delete Asset API",
+            "DELETE",
+            f"assets/{asset_id}",
+            200
+        )
+        
+        return success
+
     def run_all_tests(self):
         """Run all API tests focusing on new features"""
         print("🧪 Equipment Tracker API Tests - New Features Focus")
