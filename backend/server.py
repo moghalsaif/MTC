@@ -1325,6 +1325,68 @@ async def get_licence_stats(current_user: dict = Depends(get_current_user)):
         "expiring_soon": expiring_soon
     }
 
+# Purchased Assets Routes
+@api_router.get("/assets")
+async def get_assets(current_user: dict = Depends(get_current_user)):
+    assets = await db.assets.find({}, {"_id": 0}).to_list(1000)
+    # Populate project names
+    for asset in assets:
+        if asset.get("project_id"):
+            project = await db.projects.find_one({"id": asset["project_id"]}, {"_id": 0})
+            asset["project_name"] = project["name"] if project else None
+    return assets
+
+@api_router.post("/assets")
+async def create_asset(asset_data: AssetCreate, current_user: dict = Depends(get_current_user)):
+    asset_dict = asset_data.model_dump()
+    
+    # Get project name if project_id provided
+    if asset_dict.get("project_id"):
+        project = await db.projects.find_one({"id": asset_dict["project_id"]}, {"_id": 0})
+        asset_dict["project_name"] = project["name"] if project else None
+    
+    asset = Asset(**asset_dict)
+    await db.assets.insert_one(asset.model_dump())
+    return asset
+
+@api_router.get("/assets/{asset_id}")
+async def get_asset(asset_id: str, current_user: dict = Depends(get_current_user)):
+    asset = await db.assets.find_one({"id": asset_id}, {"_id": 0})
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    return asset
+
+@api_router.put("/assets/{asset_id}")
+async def update_asset(asset_id: str, asset_data: AssetUpdate, current_user: dict = Depends(get_current_user)):
+    existing = await db.assets.find_one({"id": asset_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    
+    update_data = {k: v for k, v in asset_data.model_dump().items() if v is not None}
+    
+    # Get project name if project_id updated
+    if "project_id" in update_data:
+        if update_data["project_id"]:
+            project = await db.projects.find_one({"id": update_data["project_id"]}, {"_id": 0})
+            update_data["project_name"] = project["name"] if project else None
+        else:
+            update_data["project_name"] = None
+    
+    await db.assets.update_one(
+        {"id": asset_id},
+        {"$set": update_data}
+    )
+    
+    updated = await db.assets.find_one({"id": asset_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/assets/{asset_id}")
+async def delete_asset(asset_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.assets.delete_one({"id": asset_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    return {"message": "Asset deleted successfully"}
+
 app.include_router(api_router)
 
 app.add_middleware(
