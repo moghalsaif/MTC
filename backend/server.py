@@ -207,6 +207,7 @@ class Licence(BaseModel):
     name: str
     vendor: str
     category: str  # Software, Hardware, Service, etc.
+    licence_type: str = "Annual"  # Monthly, Annual, Lifetime
     cost_per_period: float
     billing_period: str  # Monthly, Quarterly, Yearly
     renewal_date: str
@@ -221,6 +222,7 @@ class LicenceCreate(BaseModel):
     name: str
     vendor: str
     category: str
+    licence_type: Optional[str] = "Annual"
     cost_per_period: float
     billing_period: str
     renewal_date: str
@@ -234,6 +236,7 @@ class LicenceUpdate(BaseModel):
     name: Optional[str] = None
     vendor: Optional[str] = None
     category: Optional[str] = None
+    licence_type: Optional[str] = None
     cost_per_period: Optional[float] = None
     billing_period: Optional[str] = None
     renewal_date: Optional[str] = None
