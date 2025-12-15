@@ -763,22 +763,24 @@ class EquipmentTrackerAPITester:
         return success
 
     def test_licences_crud_api(self):
-        """Test Licences CRUD operations"""
-        # Create licence
+        """Test Licences CRUD operations with credentials"""
+        # Create licence with credentials
         licence_data = {
             "name": "Test Adobe Creative Cloud",
             "vendor": "Adobe",
             "category": "Software",
-            "cost_per_period": 99.99,
+            "cost_per_period": 2500.00,  # INR amount
             "billing_period": "Monthly",
             "renewal_date": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),
             "status": "Active",
             "seats": 5,
+            "account_email": "test@company.com",
+            "account_password": "testpass123",
             "notes": "Test licence for video editing"
         }
         
         success, response = self.run_test(
-            "Create Licence API",
+            "Create Licence API with Credentials",
             "POST",
             "licences",
             200,
@@ -792,6 +794,12 @@ class EquipmentTrackerAPITester:
         if not licence_id:
             self.log_result("Create Licence Response", False, "No licence ID returned")
             return False
+        
+        # Verify credentials are stored
+        if response.get('account_email') == 'test@company.com' and response.get('account_password') == 'testpass123':
+            self.log_result("Licence Credentials Storage", True)
+        else:
+            self.log_result("Licence Credentials Storage", False, "Credentials not stored properly")
         
         # Get all licences
         success, licences = self.run_test(
@@ -807,8 +815,10 @@ class EquipmentTrackerAPITester:
         # Update licence
         update_data = {
             "name": "Updated Adobe Creative Cloud",
-            "cost_per_period": 109.99,
-            "seats": 10
+            "cost_per_period": 2800.00,  # Updated INR amount
+            "seats": 10,
+            "account_email": "updated@company.com",
+            "account_password": "newpass456"
         }
         
         success, updated_licence = self.run_test(
