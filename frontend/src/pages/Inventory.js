@@ -196,7 +196,7 @@ export default function Inventory() {
       </div>
 
       <div className="bg-[#27272A] border border-[#3F3F46] rounded-2xl p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <div className="relative md:col-span-2">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#71717A]" size={18} />
             <Input
@@ -227,6 +227,16 @@ export default function Inventory() {
               {statuses.map(status => (
                 <SelectItem key={status} value={status}>{status}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedCheckoutFilter} onValueChange={setSelectedCheckoutFilter}>
+            <SelectTrigger data-testid="checkout-filter" className="bg-[#1B1B1B] border-[#3F3F46] text-white h-12">
+              <SelectValue placeholder="Checkout Status" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#27272A] border-[#3F3F46]">
+              <SelectItem value="all">All Items</SelectItem>
+              <SelectItem value="out">Checked Out</SelectItem>
+              <SelectItem value="in">Not Checked Out</SelectItem>
             </SelectContent>
           </Select>
         </div>
