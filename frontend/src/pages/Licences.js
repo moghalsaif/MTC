@@ -114,9 +114,9 @@ export default function Licences() {
       toast.success('Licence added');
       setAddLicenceDialog(false);
       setNewLicenceForm({
-        name: '', vendor: '', category: 'Software', cost_per_period: '',
-        billing_period: 'Monthly', renewal_date: '', status: 'Active',
-        seats: '', account_email: '', account_password: '', notes: ''
+        name: '', vendor: '', category: 'Software', licence_type: 'Annual',
+        cost_per_period: '', billing_period: 'Monthly', renewal_date: '',
+        status: 'Active', seats: '', account_email: '', account_password: '', notes: ''
       });
       fetchLicences();
       fetchStats();
@@ -131,6 +131,7 @@ export default function Licences() {
       name: licence.name || '',
       vendor: licence.vendor || '',
       category: licence.category || 'Software',
+      licence_type: licence.licence_type || 'Annual',
       cost_per_period: licence.cost_per_period?.toString() || '',
       billing_period: licence.billing_period || 'Monthly',
       renewal_date: licence.renewal_date ? licence.renewal_date.split('T')[0] : '',
