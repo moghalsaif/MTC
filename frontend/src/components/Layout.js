@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, Package, PackageOpen, FolderKanban, AlertTriangle, PackageX, Wrench, LogOut, ArrowRightLeft } from 'lucide-react';
+import { LayoutDashboard, Package, PackageOpen, FolderKanban, AlertTriangle, PackageX, Wrench, LogOut, ArrowRightLeft, CreditCard } from 'lucide-react';
 import { useState } from 'react';
 import axios from 'axios';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
@@ -34,6 +34,7 @@ export default function Layout() {
     { path: '/inventory', icon: Package, label: 'Inventory' },
     { path: '/items-out', icon: PackageOpen, label: 'Items Out' },
     { path: '/projects', icon: FolderKanban, label: 'Projects' },
+    { path: '/licences', icon: CreditCard, label: 'Licences' },
     { path: '/issues', icon: AlertTriangle, label: 'Issues' },
     { path: '/lost-items', icon: PackageX, label: 'Lost Items' },
     { path: '/maintenance', icon: Wrench, label: 'Maintenance' },
