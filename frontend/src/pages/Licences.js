@@ -29,14 +29,14 @@ export default function Licences() {
   const [editLicenceDialog, setEditLicenceDialog] = useState(false);
   const [editingLicence, setEditingLicence] = useState(null);
   const [newLicenceForm, setNewLicenceForm] = useState({
-    name: '', vendor: '', category: 'Software', cost_per_period: '',
-    billing_period: 'Monthly', renewal_date: '', status: 'Active',
-    seats: '', account_email: '', account_password: '', notes: ''
+    name: '', vendor: '', category: 'Software', licence_type: 'Annual',
+    cost_per_period: '', billing_period: 'Monthly', renewal_date: '',
+    status: 'Active', seats: '', account_email: '', account_password: '', notes: ''
   });
   const [editLicenceForm, setEditLicenceForm] = useState({
-    name: '', vendor: '', category: 'Software', cost_per_period: '',
-    billing_period: 'Monthly', renewal_date: '', status: 'Active',
-    seats: '', account_email: '', account_password: '', notes: ''
+    name: '', vendor: '', category: 'Software', licence_type: 'Annual',
+    cost_per_period: '', billing_period: 'Monthly', renewal_date: '',
+    status: 'Active', seats: '', account_email: '', account_password: '', notes: ''
   });
   
   // Asset dialogs
