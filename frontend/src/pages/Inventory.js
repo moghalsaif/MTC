@@ -146,7 +146,16 @@ export default function Inventory() {
                          item.category.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
     const matchesStatus = selectedStatus === 'all' || item.status === selectedStatus;
-    return matchesSearch && matchesCategory && matchesStatus;
+    
+    // New checkout filter logic
+    let matchesCheckout = true;
+    if (selectedCheckoutFilter === 'out') {
+      matchesCheckout = item.quantity_out > 0;
+    } else if (selectedCheckoutFilter === 'in') {
+      matchesCheckout = item.quantity_out === 0;
+    }
+    
+    return matchesSearch && matchesCategory && matchesStatus && matchesCheckout;
   });
 
   const getStatusBadge = (status) => {
