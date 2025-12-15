@@ -1123,10 +1123,59 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
         
         elements.append(summary_table)
         
-        # Add 100% RETURN CONFIRMATION if all items are back
-        if is_fully_returned:
-            elements.append(Spacer(1, 0.3 * inch))
+        # CRITICAL: Show different message based on verification status
+        elements.append(Spacer(1, 0.3 * inch))
+        
+        if total_missing > 0:
+            # ITEMS ARE MISSING - NOT VERIFIED
+            warning_style = ParagraphStyle(
+                'Warning',
+                parent=styles['Normal'],
+                fontSize=14,
+                textColor=colors.HexColor('#DC2626'),
+                alignment=TA_CENTER,
+                fontName='Helvetica-Bold',
+                spaceAfter=10
+            )
             
+            warning_box = ParagraphStyle(
+                'WarningBox',
+                parent=styles['Normal'],
+                fontSize=10,
+                textColor=colors.HexColor('#DC2626'),
+                alignment=TA_CENTER
+            )
+            
+            elements.append(Paragraph("✕ INVENTORY VERIFICATION FAILED", warning_style))
+            elements.append(Paragraph(f"{total_missing} item(s) are MISSING from this project.", warning_box))
+            elements.append(Paragraph(f"Only {total_returned} of {total_out} items have been returned to inventory.", warning_box))
+            elements.append(Paragraph("This project CANNOT be considered fully verified until all items are accounted for.", warning_box))
+        
+        elif total_pending > 0:
+            # ITEMS STILL PENDING
+            pending_style = ParagraphStyle(
+                'Pending',
+                parent=styles['Normal'],
+                fontSize=14,
+                textColor=colors.HexColor('#F59E0B'),
+                alignment=TA_CENTER,
+                fontName='Helvetica-Bold',
+                spaceAfter=10
+            )
+            
+            pending_box = ParagraphStyle(
+                'PendingBox',
+                parent=styles['Normal'],
+                fontSize=10,
+                textColor=colors.HexColor('#1B1B1B'),
+                alignment=TA_CENTER
+            )
+            
+            elements.append(Paragraph("○ VERIFICATION IN PROGRESS", pending_style))
+            elements.append(Paragraph(f"{total_pending} item(s) are still pending return.", pending_box))
+        
+        elif is_fully_verified:
+            # ALL ITEMS RETURNED - 100% VERIFIED
             confirmation_style = ParagraphStyle(
                 'Confirmation',
                 parent=styles['Normal'],
@@ -1145,7 +1194,7 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
                 alignment=TA_CENTER
             )
             
-            elements.append(Paragraph("✓ 100% INVENTORY RETURNED", confirmation_style))
+            elements.append(Paragraph("✓ 100% INVENTORY VERIFIED", confirmation_style))
             elements.append(Paragraph(f"All {total_out} item(s) assigned to this project have been verified and returned to inventory.", confirmation_box))
             elements.append(Paragraph(f"Verification completed on {generated_time}", confirmation_box))
     
