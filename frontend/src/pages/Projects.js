@@ -343,6 +343,93 @@ export default function Projects() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Project Dialog */}
+      <Dialog open={editProjectDialog} onOpenChange={setEditProjectDialog}>
+        <DialogContent className="bg-[#27272A] border-[#3F3F46] text-white max-w-md" data-testid="edit-project-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-2xl font-bold">EDIT PROJECT</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-white text-sm mb-2 block">Project Name *</Label>
+              <Input
+                data-testid="edit-project-name-input"
+                value={editProjectForm.name}
+                onChange={(e) => setEditProjectForm({...editProjectForm, name: e.target.value})}
+                className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12"
+              />
+            </div>
+            <div>
+              <Label className="text-white text-sm mb-2 block">Location</Label>
+              <Input
+                data-testid="edit-project-location-input"
+                value={editProjectForm.location}
+                onChange={(e) => setEditProjectForm({...editProjectForm, location: e.target.value})}
+                className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12"
+              />
+            </div>
+            <div>
+              <Label className="text-white text-sm mb-2 block">Start Date</Label>
+              <Input
+                type="date"
+                data-testid="edit-project-start-date-input"
+                value={editProjectForm.start_date}
+                onChange={(e) => setEditProjectForm({...editProjectForm, start_date: e.target.value})}
+                className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12"
+              />
+            </div>
+            <div>
+              <Label className="text-white text-sm mb-2 block">End Date</Label>
+              <Input
+                type="date"
+                data-testid="edit-project-end-date-input"
+                value={editProjectForm.end_date}
+                onChange={(e) => setEditProjectForm({...editProjectForm, end_date: e.target.value})}
+                className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12"
+              />
+            </div>
+            <div>
+              <Label className="text-white text-sm mb-2 block">Project Owner</Label>
+              <Input
+                data-testid="edit-project-owner-input"
+                value={editProjectForm.owner}
+                onChange={(e) => setEditProjectForm({...editProjectForm, owner: e.target.value})}
+                className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12"
+              />
+            </div>
+            <div>
+              <Label className="text-white text-sm mb-2 block">Status</Label>
+              <Select value={editProjectForm.status} onValueChange={(val) => setEditProjectForm({...editProjectForm, status: val})}>
+                <SelectTrigger data-testid="edit-project-status-select" className="bg-[#1B1B1B] border-[#3F3F46] text-white h-12">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#27272A] border-[#3F3F46]">
+                  <SelectItem value="Planning">Planning</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Wrapped">Wrapped</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => setEditProjectDialog(false)}
+              data-testid="cancel-edit-project"
+              className="bg-transparent border border-[#3F3F46] text-white hover:bg-[#3F3F46] rounded-2xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateProject}
+              data-testid="confirm-edit-project"
+              className="bg-[#8B5CF6] hover:bg-[#8B5CF6]/90 text-white font-bold uppercase tracking-wider rounded-2xl"
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
