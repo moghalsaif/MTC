@@ -173,6 +173,8 @@ class Checkout(BaseModel):
     project_name: str
     quantity_out: int
     quantity_returned: int = 0
+    quantity_missing: int = 0  # Track missing items separately
+    quantity_damaged: int = 0  # Track damaged items
     checkout_time: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     expected_return: str
     return_time: Optional[str] = None
