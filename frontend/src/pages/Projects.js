@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, FolderKanban, Trash2, FileText } from 'lucide-react';
+import { Plus, FolderKanban, Trash2, FileText, Pencil } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
@@ -15,7 +15,17 @@ export default function Projects() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addProjectDialog, setAddProjectDialog] = useState(false);
+  const [editProjectDialog, setEditProjectDialog] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
   const [newProjectForm, setNewProjectForm] = useState({
+    name: '',
+    location: '',
+    start_date: '',
+    end_date: '',
+    owner: '',
+    status: 'Planning'
+  });
+  const [editProjectForm, setEditProjectForm] = useState({
     name: '',
     location: '',
     start_date: '',
