@@ -210,6 +210,8 @@ class Licence(BaseModel):
     renewal_date: str
     status: str = "Active"  # Active, Expiring Soon, Expired, Cancelled
     seats: Optional[int] = None  # Number of licences/seats
+    account_email: Optional[str] = None  # Subscription credentials
+    account_password: Optional[str] = None  # Subscription credentials
     notes: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -222,6 +224,8 @@ class LicenceCreate(BaseModel):
     renewal_date: str
     status: Optional[str] = "Active"
     seats: Optional[int] = None
+    account_email: Optional[str] = None
+    account_password: Optional[str] = None
     notes: Optional[str] = None
 
 class LicenceUpdate(BaseModel):
@@ -233,10 +237,46 @@ class LicenceUpdate(BaseModel):
     renewal_date: Optional[str] = None
     status: Optional[str] = None
     seats: Optional[int] = None
+    account_email: Optional[str] = None
+    account_password: Optional[str] = None
     notes: Optional[str] = None
-    severity: Optional[str] = "Medium"
-    assigned_to: Optional[str] = None
+
+# Purchased Assets Models
+class Asset(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    vendor: str  # Platform or vendor
+    category: str  # 3D Models, Stock Footage, Sound Effects, etc.
+    purchase_date: str
+    purchase_price: Optional[float] = None
+    project_id: Optional[str] = None  # Assigned project
+    project_name: Optional[str] = None
+    storage_location: str  # Local server, NAS path, cloud drive, etc.
+    licence_type: Optional[str] = None  # Royalty-free, Editorial, etc.
+    notes: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class AssetCreate(BaseModel):
+    name: str
+    vendor: str
+    category: str
+    purchase_date: str
+    purchase_price: Optional[float] = None
     project_id: Optional[str] = None
+    storage_location: str
+    licence_type: Optional[str] = None
+    notes: Optional[str] = None
+
+class AssetUpdate(BaseModel):
+    name: Optional[str] = None
+    vendor: Optional[str] = None
+    category: Optional[str] = None
+    purchase_date: Optional[str] = None
+    purchase_price: Optional[float] = None
+    project_id: Optional[str] = None
+    storage_location: Optional[str] = None
+    licence_type: Optional[str] = None
+    notes: Optional[str] = None
 
 class LostItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
