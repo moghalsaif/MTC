@@ -34,6 +34,7 @@ export default function Layout() {
     { path: '/inventory', icon: Package, label: 'Inventory' },
     { path: '/items-out', icon: PackageOpen, label: 'Items Out' },
     { path: '/projects', icon: FolderKanban, label: 'Projects' },
+    { path: '/shoot-logs', icon: FileSpreadsheet, label: 'Shoot Logs' },
     { path: '/licences', icon: CreditCard, label: 'Licences' },
     { path: '/issues', icon: AlertTriangle, label: 'Issues' },
     { path: '/lost-items', icon: PackageX, label: 'Lost Items' },
