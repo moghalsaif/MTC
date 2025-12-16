@@ -1001,12 +1001,12 @@ export default function ShootLogs() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-xs">Go/NG</Label>
-                <Select value={filters.go_ng} onValueChange={(v) => setFilters({ ...filters, go_ng: v })}>
+                <Select value={filters.go_ng || "all"} onValueChange={(v) => setFilters({ ...filters, go_ng: v === "all" ? "" : v })}>
                   <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] h-9">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#27272A] border-[#3F3F46]">
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="Go">Go</SelectItem>
                     <SelectItem value="NG">NG</SelectItem>
                   </SelectContent>
@@ -1014,12 +1014,12 @@ export default function ShootLogs() {
               </div>
               <div>
                 <Label className="text-xs">INT/EXT</Label>
-                <Select value={filters.int_ext} onValueChange={(v) => setFilters({ ...filters, int_ext: v })}>
+                <Select value={filters.int_ext || "all"} onValueChange={(v) => setFilters({ ...filters, int_ext: v === "all" ? "" : v })}>
                   <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] h-9">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#27272A] border-[#3F3F46]">
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="INT">INT</SelectItem>
                     <SelectItem value="EXT">EXT</SelectItem>
                   </SelectContent>
@@ -1029,12 +1029,12 @@ export default function ShootLogs() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-xs">Ready for Render</Label>
-                <Select value={filters.ready_for_render} onValueChange={(v) => setFilters({ ...filters, ready_for_render: v })}>
+                <Select value={filters.ready_for_render || "all"} onValueChange={(v) => setFilters({ ...filters, ready_for_render: v === "all" ? "" : v })}>
                   <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] h-9">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#27272A] border-[#3F3F46]">
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="true">Yes</SelectItem>
                     <SelectItem value="false">No</SelectItem>
                   </SelectContent>
@@ -1042,12 +1042,12 @@ export default function ShootLogs() {
               </div>
               <div>
                 <Label className="text-xs">Ready for Comp</Label>
-                <Select value={filters.ready_for_comp} onValueChange={(v) => setFilters({ ...filters, ready_for_comp: v })}>
+                <Select value={filters.ready_for_comp || "all"} onValueChange={(v) => setFilters({ ...filters, ready_for_comp: v === "all" ? "" : v })}>
                   <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] h-9">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#27272A] border-[#3F3F46]">
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="true">Yes</SelectItem>
                     <SelectItem value="false">No</SelectItem>
                   </SelectContent>
