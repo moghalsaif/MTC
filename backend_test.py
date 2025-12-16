@@ -1014,6 +1014,284 @@ class EquipmentTrackerAPITester:
         
         return success
 
+    def test_shoot_logs_crud_api(self):
+        """Test Shoot Logs CRUD operations - Master Log Sheet system"""
+        # Create log sheet
+        sheet_data = {
+            "name": "Test Day 01",
+            "project_name": "Test Film Production",
+            "project_date": datetime.now(timezone.utc).strftime('%Y-%m-%d'),
+            "director": "Test Director",
+            "total_shoot_days": 30,
+            "current_shoot_day": 1,
+            "log_artist": "Test Logger",
+            "production_company": "Test Productions"
+        }
+        
+        success, response = self.run_test(
+            "Create Log Sheet API",
+            "POST",
+            "log-sheets",
+            200,
+            data=sheet_data
+        )
+        
+        if not success:
+            return False
+            
+        sheet_id = response.get('id')
+        if not sheet_id:
+            self.log_result("Create Log Sheet Response", False, "No sheet ID returned")
+            return False
+        
+        # Store for cleanup
+        self.created_log_sheets = getattr(self, 'created_log_sheets', [])
+        self.created_log_sheets.append(sheet_id)
+        
+        # Verify project metadata is stored
+        if (response.get('project_name') == 'Test Film Production' and 
+            response.get('director') == 'Test Director' and
+            response.get('log_artist') == 'Test Logger'):
+            self.log_result("Log Sheet Metadata Storage", True)
+        else:
+            self.log_result("Log Sheet Metadata Storage", False, "Metadata not stored properly")
+        
+        # Get all log sheets
+        success, sheets = self.run_test(
+            "Get All Log Sheets API",
+            "GET",
+            "log-sheets",
+            200
+        )
+        
+        if not success:
+            return False
+        
+        # Create log entry
+        entry_data = {
+            "sheet_id": sheet_id,
+            "scene_no": "1",
+            "shot_no": "1A",
+            "shot_description": "Wide establishing shot",
+            "go_ng": "Go",
+            "int_ext": "EXT",
+            "shoot_downtime": 15,  # >10 minutes for yellow warning test
+            "ready_for_render": True,
+            "ready_for_comp": False,
+            "resolution": "4K (3840x2160)",
+            "fps": 24,
+            "camera_angle": "Wide"
+        }
+        
+        success, entry_response = self.run_test(
+            "Create Log Entry API",
+            "POST",
+            f"log-sheets/{sheet_id}/entries",
+            200,
+            data=entry_data
+        )
+        
+        if not success:
+            return False
+            
+        entry_id = entry_response.get('id')
+        if not entry_id:
+            self.log_result("Create Log Entry Response", False, "No entry ID returned")
+            return False
+        
+        # Store for cleanup
+        self.created_log_entries = getattr(self, 'created_log_entries', [])
+        self.created_log_entries.append(entry_id)
+        
+        # Verify entry data
+        if (entry_response.get('go_ng') == 'Go' and 
+            entry_response.get('shoot_downtime') == 15 and
+            entry_response.get('ready_for_render') == True):
+            self.log_result("Log Entry Data Storage", True)
+        else:
+            self.log_result("Log Entry Data Storage", False, "Entry data not stored properly")
+        
+        # Get entries for sheet
+        success, entries = self.run_test(
+            "Get Log Entries API",
+            "GET",
+            f"log-sheets/{sheet_id}/entries",
+            200
+        )
+        
+        if not success:
+            return False
+        
+        # Update log entry (inline editing simulation)
+        update_data = {
+            "go_ng": "NG",
+            "notes": "Updated test note",
+            "shoot_downtime": 5,  # <10 minutes
+            "ready_for_comp": True
+        }
+        
+        success, updated_entry = self.run_test(
+            "Update Log Entry API (PUT /api/log-entries/{id})",
+            "PUT",
+            f"log-entries/{entry_id}",
+            200,
+            data=update_data
+        )
+        
+        if success and updated_entry.get('go_ng') == 'NG':
+            self.log_result("Log Entry Update Verification", True)
+        else:
+            self.log_result("Log Entry Update Verification", False, "Update not reflected")
+            return False
+        
+        # Test sheet lock/unlock
+        lock_data = {"is_locked": True}
+        success, _ = self.run_test(
+            "Lock Log Sheet API",
+            "PUT",
+            f"log-sheets/{sheet_id}",
+            200,
+            data=lock_data
+        )
+        
+        if not success:
+            return False
+        
+        unlock_data = {"is_locked": False}
+        success, _ = self.run_test(
+            "Unlock Log Sheet API",
+            "PUT",
+            f"log-sheets/{sheet_id}",
+            200,
+            data=unlock_data
+        )
+        
+        return success
+
+    def test_shoot_logs_filtering_sorting_api(self):
+        """Test Shoot Logs filtering and sorting APIs"""
+        # Get existing sheets
+        success, sheets = self.run_test("Get Sheets for Filtering", "GET", "log-sheets", 200)
+        if not success or not sheets:
+            self.log_result("Shoot Logs Filtering", False, "No sheets available for testing")
+            return False
+        
+        sheet_id = sheets[0].get('id')
+        
+        # Test filtering by Go/NG
+        success, filtered_entries = self.run_test(
+            "Filter Entries by Go/NG",
+            "GET",
+            f"log-sheets/{sheet_id}/entries?go_ng=Go",
+            200
+        )
+        
+        if not success:
+            return False
+        
+        # Test filtering by INT/EXT
+        success, filtered_entries = self.run_test(
+            "Filter Entries by INT/EXT",
+            "GET",
+            f"log-sheets/{sheet_id}/entries?int_ext=EXT",
+            200
+        )
+        
+        if not success:
+            return False
+        
+        # Test sorting by scene_no
+        success, sorted_entries = self.run_test(
+            "Sort Entries by Scene No",
+            "GET",
+            f"log-sheets/{sheet_id}/entries?sort_by=scene_no&sort_order=asc",
+            200
+        )
+        
+        if not success:
+            return False
+        
+        # Test grouping by scene_no
+        success, grouped_entries = self.run_test(
+            "Group Entries by Scene No",
+            "GET",
+            f"log-sheets/{sheet_id}/entries?group_by=scene_no",
+            200
+        )
+        
+        return success
+
+    def test_shoot_logs_export_api(self):
+        """Test Shoot Logs CSV and Excel export APIs"""
+        # Get existing sheets
+        success, sheets = self.run_test("Get Sheets for Export", "GET", "log-sheets", 200)
+        if not success or not sheets:
+            self.log_result("Shoot Logs Export", False, "No sheets available for testing")
+            return False
+        
+        sheet_id = sheets[0].get('id')
+        
+        # Test CSV export
+        try:
+            url = f"{self.api_url}/log-sheets/{sheet_id}/export/csv"
+            headers = {'Authorization': f'Bearer {self.token}'}
+            
+            response = requests.get(url, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                # Check if response is CSV
+                content_type = response.headers.get('content-type', '')
+                content_disposition = response.headers.get('content-disposition', '')
+                
+                if 'text/csv' in content_type or 'application/octet-stream' in content_type:
+                    self.log_result("CSV Export API", True)
+                    
+                    # Check if CSV has content
+                    if len(response.content) > 100:  # CSV should have headers + data
+                        self.log_result("CSV Content Size Validation", True)
+                    else:
+                        self.log_result("CSV Content Size Validation", False, f"CSV too small: {len(response.content)} bytes")
+                else:
+                    self.log_result("CSV Export API", False, f"Wrong content type: {content_type}")
+            else:
+                self.log_result("CSV Export API", False, f"Status code: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("CSV Export API", False, f"Error: {str(e)}")
+            return False
+        
+        # Test Excel export
+        try:
+            url = f"{self.api_url}/log-sheets/{sheet_id}/export/excel"
+            headers = {'Authorization': f'Bearer {self.token}'}
+            
+            response = requests.get(url, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                # Check if response is Excel
+                content_type = response.headers.get('content-type', '')
+                content_disposition = response.headers.get('content-disposition', '')
+                
+                if ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' in content_type or
+                    'application/octet-stream' in content_type):
+                    self.log_result("Excel Export API", True)
+                    
+                    # Check if Excel has content
+                    if len(response.content) > 1000:  # Excel should be substantial
+                        self.log_result("Excel Content Size Validation", True)
+                        return True
+                    else:
+                        self.log_result("Excel Content Size Validation", False, f"Excel too small: {len(response.content)} bytes")
+                else:
+                    self.log_result("Excel Export API", False, f"Wrong content type: {content_type}")
+            else:
+                self.log_result("Excel Export API", False, f"Status code: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("Excel Export API", False, f"Error: {str(e)}")
+            
+        return False
+
     def run_all_tests(self):
         """Run all API tests focusing on new features"""
         print("🧪 Equipment Tracker API Tests - New Features Focus")
