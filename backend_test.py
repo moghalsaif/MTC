@@ -1293,8 +1293,8 @@ class EquipmentTrackerAPITester:
         return False
 
     def run_all_tests(self):
-        """Run all API tests focusing on new features"""
-        print("🧪 Equipment Tracker API Tests - New Features Focus")
+        """Run all API tests focusing on Shoot Logs feature"""
+        print("🧪 Equipment Tracker API Tests - Shoot Logs Feature Focus")
         print(f"Testing against: {self.base_url}")
         print("=" * 60)
         
@@ -1304,8 +1304,20 @@ class EquipmentTrackerAPITester:
             print("❌ Authentication failed - stopping tests")
             return False
         
-        # Test new features
-        print("\n🆕 NEW FEATURES API TESTS")
+        # Test Shoot Logs features
+        print("\n📋 SHOOT LOGS API TESTS")
+        
+        # Test shoot logs CRUD operations
+        self.test_shoot_logs_crud_api()
+        
+        # Test filtering and sorting
+        self.test_shoot_logs_filtering_sorting_api()
+        
+        # Test export functionality
+        self.test_shoot_logs_export_api()
+        
+        # Test other features
+        print("\n🆕 OTHER FEATURES API TESTS")
         
         # Create test projects for edit testing
         if self.test_create_test_projects():
