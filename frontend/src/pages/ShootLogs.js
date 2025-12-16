@@ -851,12 +851,12 @@ export default function ShootLogs() {
             {sheets.length > 0 && (
               <div>
                 <Label className="text-xs">Duplicate from existing sheet (optional)</Label>
-                <Select value={sheetForm.duplicate_from} onValueChange={(v) => setSheetForm({ ...sheetForm, duplicate_from: v })}>
+                <Select value={sheetForm.duplicate_from || "none"} onValueChange={(v) => setSheetForm({ ...sheetForm, duplicate_from: v === "none" ? "" : v })}>
                   <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] h-10">
                     <SelectValue placeholder="Select sheet to copy entries from..." />
                   </SelectTrigger>
                   <SelectContent className="bg-[#27272A] border-[#3F3F46]">
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {sheets.map(s => (
                       <SelectItem key={s.id} value={s.id}>{s.name} ({s.entry_count} entries)</SelectItem>
                     ))}
