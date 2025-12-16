@@ -292,21 +292,48 @@ class AssetUpdate(BaseModel):
 class LogSheet(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str  # e.g., "Master Sheet", "Day 01", "Scene 12", "Unit B"
-    sheet_type: str = "derived"  # "master" or "derived"
-    is_master: bool = False
+    
+    # Project Details (Required for each shoot log)
+    project_name: str
+    project_date: str  # Shoot date
+    director: Optional[str] = None
+    total_shoot_days: Optional[int] = None
+    current_shoot_day: Optional[int] = None  # Day X of total
+    log_artist: str  # Name of person maintaining logs
+    production_company: Optional[str] = None
+    
+    # Sheet Settings
+    sheet_type: str = "master"  # "master" or "derived"
+    parent_sheet_id: Optional[str] = None  # For derived sheets
     is_visible: bool = True
     is_locked: bool = False  # Lock column structure
+    
+    # Metadata
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     created_by: Optional[str] = None
 
 class LogSheetCreate(BaseModel):
     name: str
-    sheet_type: str = "derived"
-    duplicate_from: Optional[str] = None  # Sheet ID to duplicate from
+    project_name: str
+    project_date: str
+    director: Optional[str] = None
+    total_shoot_days: Optional[int] = None
+    current_shoot_day: Optional[int] = None
+    log_artist: str
+    production_company: Optional[str] = None
+    sheet_type: str = "master"
+    duplicate_from: Optional[str] = None  # Sheet ID to duplicate entries from
 
 class LogSheetUpdate(BaseModel):
     name: Optional[str] = None
+    project_name: Optional[str] = None
+    project_date: Optional[str] = None
+    director: Optional[str] = None
+    total_shoot_days: Optional[int] = None
+    current_shoot_day: Optional[int] = None
+    log_artist: Optional[str] = None
+    production_company: Optional[str] = None
     is_visible: Optional[bool] = None
     is_locked: Optional[bool] = None
 
