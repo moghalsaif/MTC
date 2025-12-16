@@ -1657,6 +1657,367 @@ async def delete_asset(asset_id: str, current_user: dict = Depends(get_current_u
         raise HTTPException(status_code=404, detail="Asset not found")
     return {"message": "Asset deleted successfully"}
 
+# ==================== SHOOT LOG ROUTES ====================
+
+# Log Sheet CRUD
+@api_router.get("/log-sheets")
+async def get_log_sheets(current_user: dict = Depends(get_current_user)):
+    sheets = await db.log_sheets.find({}, {"_id": 0}).to_list(1000)
+    # Get entry count for each sheet
+    for sheet in sheets:
+        count = await db.log_entries.count_documents({"sheet_id": sheet["id"]})
+        sheet["entry_count"] = count
+    return sorted(sheets, key=lambda x: x.get("created_at", ""), reverse=True)
+
+@api_router.get("/log-sheets/{sheet_id}")
+async def get_log_sheet(sheet_id: str, current_user: dict = Depends(get_current_user)):
+    sheet = await db.log_sheets.find_one({"id": sheet_id}, {"_id": 0})
+    if not sheet:
+        raise HTTPException(status_code=404, detail="Log sheet not found")
+    
+    # Get entry count
+    count = await db.log_entries.count_documents({"sheet_id": sheet_id})
+    sheet["entry_count"] = count
+    return sheet
+
+@api_router.post("/log-sheets")
+async def create_log_sheet(sheet_data: LogSheetCreate, current_user: dict = Depends(get_current_user)):
+    sheet_dict = sheet_data.model_dump()
+    sheet_dict["created_by"] = current_user.get("name", current_user.get("email"))
+    
+    # If duplicating from another sheet
+    duplicate_from = sheet_dict.pop("duplicate_from", None)
+    
+    sheet = LogSheet(**sheet_dict)
+    await db.log_sheets.insert_one(sheet.model_dump())
+    
+    # If duplicating, copy all entries from source sheet
+    if duplicate_from:
+        source_entries = await db.log_entries.find({"sheet_id": duplicate_from}, {"_id": 0}).to_list(1000)
+        for entry in source_entries:
+            new_entry = entry.copy()
+            new_entry["id"] = str(uuid.uuid4())
+            new_entry["sheet_id"] = sheet.id
+            new_entry["created_at"] = datetime.now(timezone.utc).isoformat()
+            new_entry["updated_at"] = datetime.now(timezone.utc).isoformat()
+            await db.log_entries.insert_one(new_entry)
+    
+    return sheet
+
+@api_router.put("/log-sheets/{sheet_id}")
+async def update_log_sheet(sheet_id: str, sheet_data: LogSheetUpdate, current_user: dict = Depends(get_current_user)):
+    existing = await db.log_sheets.find_one({"id": sheet_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Log sheet not found")
+    
+    update_data = {k: v for k, v in sheet_data.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.log_sheets.update_one({"id": sheet_id}, {"$set": update_data})
+    updated = await db.log_sheets.find_one({"id": sheet_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/log-sheets/{sheet_id}")
+async def delete_log_sheet(sheet_id: str, current_user: dict = Depends(get_current_user)):
+    sheet = await db.log_sheets.find_one({"id": sheet_id}, {"_id": 0})
+    if not sheet:
+        raise HTTPException(status_code=404, detail="Log sheet not found")
+    
+    # Delete all entries for this sheet
+    await db.log_entries.delete_many({"sheet_id": sheet_id})
+    
+    # Delete the sheet
+    await db.log_sheets.delete_one({"id": sheet_id})
+    return {"message": "Log sheet and all entries deleted successfully"}
+
+# Log Entry CRUD
+@api_router.get("/log-sheets/{sheet_id}/entries")
+async def get_log_entries(
+    sheet_id: str, 
+    current_user: dict = Depends(get_current_user),
+    scene_no: Optional[str] = None,
+    shot_no: Optional[str] = None,
+    go_ng: Optional[str] = None,
+    int_ext: Optional[str] = None,
+    ready_for_render: Optional[bool] = None,
+    ready_for_comp: Optional[bool] = None,
+    ue_environment_name: Optional[str] = None,
+    comp_artist: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    sort_order: Optional[str] = "asc",
+    group_by: Optional[str] = None
+):
+    # Build filter query
+    query = {"sheet_id": sheet_id}
+    
+    if scene_no:
+        query["scene_no"] = {"$regex": scene_no, "$options": "i"}
+    if shot_no:
+        query["shot_no"] = {"$regex": shot_no, "$options": "i"}
+    if go_ng:
+        query["go_ng"] = go_ng
+    if int_ext:
+        query["int_ext"] = int_ext
+    if ready_for_render is not None:
+        query["ready_for_render"] = ready_for_render
+    if ready_for_comp is not None:
+        query["ready_for_comp"] = ready_for_comp
+    if ue_environment_name:
+        query["ue_environment_name"] = {"$regex": ue_environment_name, "$options": "i"}
+    if comp_artist:
+        query["comp_artist"] = {"$regex": comp_artist, "$options": "i"}
+    
+    entries = await db.log_entries.find(query, {"_id": 0}).to_list(1000)
+    
+    # Sort entries
+    if sort_by:
+        reverse = sort_order == "desc"
+        entries = sorted(entries, key=lambda x: (x.get(sort_by) or "", x.get("row_order", 0)), reverse=reverse)
+    else:
+        entries = sorted(entries, key=lambda x: x.get("row_order", 0))
+    
+    # Group entries if requested
+    if group_by and group_by in ["scene_no", "int_ext", "ue_environment_name", "comp_artist"]:
+        grouped = {}
+        for entry in entries:
+            key = entry.get(group_by) or "Unassigned"
+            if key not in grouped:
+                grouped[key] = []
+            grouped[key].append(entry)
+        return {"grouped": True, "groups": grouped, "group_by": group_by}
+    
+    return {"grouped": False, "entries": entries}
+
+@api_router.post("/log-sheets/{sheet_id}/entries")
+async def create_log_entry(sheet_id: str, entry_data: LogEntryCreate, current_user: dict = Depends(get_current_user)):
+    # Verify sheet exists
+    sheet = await db.log_sheets.find_one({"id": sheet_id}, {"_id": 0})
+    if not sheet:
+        raise HTTPException(status_code=404, detail="Log sheet not found")
+    
+    if sheet.get("is_locked"):
+        raise HTTPException(status_code=400, detail="This sheet is locked and cannot be edited")
+    
+    # Get next row order
+    max_order = await db.log_entries.find_one(
+        {"sheet_id": sheet_id}, 
+        sort=[("row_order", -1)]
+    )
+    next_order = (max_order.get("row_order", 0) + 1) if max_order else 1
+    
+    entry_dict = entry_data.model_dump()
+    entry_dict["sheet_id"] = sheet_id
+    entry_dict["row_order"] = next_order
+    
+    entry = LogEntry(**entry_dict)
+    await db.log_entries.insert_one(entry.model_dump())
+    
+    # Update sheet timestamp
+    await db.log_sheets.update_one(
+        {"id": sheet_id}, 
+        {"$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return entry
+
+@api_router.put("/log-entries/{entry_id}")
+async def update_log_entry(entry_id: str, entry_data: LogEntryUpdate, current_user: dict = Depends(get_current_user)):
+    existing = await db.log_entries.find_one({"id": entry_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Log entry not found")
+    
+    # Check if sheet is locked
+    sheet = await db.log_sheets.find_one({"id": existing["sheet_id"]}, {"_id": 0})
+    if sheet and sheet.get("is_locked"):
+        raise HTTPException(status_code=400, detail="This sheet is locked and cannot be edited")
+    
+    update_data = {k: v for k, v in entry_data.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.log_entries.update_one({"id": entry_id}, {"$set": update_data})
+    
+    # Update sheet timestamp
+    await db.log_sheets.update_one(
+        {"id": existing["sheet_id"]}, 
+        {"$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    updated = await db.log_entries.find_one({"id": entry_id}, {"_id": 0})
+    return updated
+
+@api_router.put("/log-entries/bulk-update")
+async def bulk_update_log_entries(bulk_data: LogEntryBulkUpdate, current_user: dict = Depends(get_current_user)):
+    updated_count = 0
+    for entry_update in bulk_data.entries:
+        entry_id = entry_update.pop("id", None)
+        if not entry_id:
+            continue
+        
+        entry_update["updated_at"] = datetime.now(timezone.utc).isoformat()
+        result = await db.log_entries.update_one({"id": entry_id}, {"$set": entry_update})
+        if result.modified_count > 0:
+            updated_count += 1
+    
+    return {"message": f"Updated {updated_count} entries"}
+
+@api_router.delete("/log-entries/{entry_id}")
+async def delete_log_entry(entry_id: str, current_user: dict = Depends(get_current_user)):
+    existing = await db.log_entries.find_one({"id": entry_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Log entry not found")
+    
+    # Check if sheet is locked
+    sheet = await db.log_sheets.find_one({"id": existing["sheet_id"]}, {"_id": 0})
+    if sheet and sheet.get("is_locked"):
+        raise HTTPException(status_code=400, detail="This sheet is locked and cannot be edited")
+    
+    await db.log_entries.delete_one({"id": entry_id})
+    
+    # Update sheet timestamp
+    await db.log_sheets.update_one(
+        {"id": existing["sheet_id"]}, 
+        {"$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Log entry deleted successfully"}
+
+# Export Routes
+@api_router.get("/log-sheets/{sheet_id}/export/csv")
+async def export_log_sheet_csv(sheet_id: str, current_user: dict = Depends(get_current_user)):
+    sheet = await db.log_sheets.find_one({"id": sheet_id}, {"_id": 0})
+    if not sheet:
+        raise HTTPException(status_code=404, detail="Log sheet not found")
+    
+    entries = await db.log_entries.find({"sheet_id": sheet_id}, {"_id": 0}).to_list(1000)
+    entries = sorted(entries, key=lambda x: x.get("row_order", 0))
+    
+    # Define column order
+    columns = [
+        "scene_no", "shot_no", "shot_description", "ki_pro_take_name", "camera_footage_name",
+        "go_ng", "notes", "physical_lens", "virtual_lens", "white_balance", "iso", "aperture",
+        "shutter", "shoot_time", "physical_elements", "int_ext", "camera_focal_distance",
+        "camera_height", "resolution", "fps", "ue_environment_name", "camera_angle",
+        "shoot_downtime", "timecode_in", "timecode_out", "ready_for_render", "ready_for_comp", "comp_artist"
+    ]
+    
+    # Create CSV
+    output = BytesIO()
+    import io
+    text_output = io.StringIO()
+    writer = csv.DictWriter(text_output, fieldnames=columns, extrasaction='ignore')
+    writer.writeheader()
+    
+    for entry in entries:
+        row = {col: entry.get(col, "") for col in columns}
+        writer.writerow(row)
+    
+    csv_content = text_output.getvalue()
+    output.write(csv_content.encode('utf-8'))
+    output.seek(0)
+    
+    filename = f"{sheet['name'].replace(' ', '_')}_{sheet['project_date']}.csv"
+    
+    return StreamingResponse(
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@api_router.get("/log-sheets/{sheet_id}/export/excel")
+async def export_log_sheet_excel(sheet_id: str, current_user: dict = Depends(get_current_user)):
+    sheet = await db.log_sheets.find_one({"id": sheet_id}, {"_id": 0})
+    if not sheet:
+        raise HTTPException(status_code=404, detail="Log sheet not found")
+    
+    entries = await db.log_entries.find({"sheet_id": sheet_id}, {"_id": 0}).to_list(1000)
+    entries = sorted(entries, key=lambda x: x.get("row_order", 0))
+    
+    # Create Excel workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Shoot Log"
+    
+    # Define columns with proper headers
+    columns = [
+        ("Scene No", "scene_no"), ("Shot No", "shot_no"), ("Shot Description", "shot_description"),
+        ("KI Pro Take", "ki_pro_take_name"), ("Camera Footage", "camera_footage_name"),
+        ("Go/NG", "go_ng"), ("Notes", "notes"), ("Physical Lens", "physical_lens"),
+        ("Virtual Lens", "virtual_lens"), ("White Balance", "white_balance"), ("ISO", "iso"),
+        ("Aperture", "aperture"), ("Shutter", "shutter"), ("Shoot Time", "shoot_time"),
+        ("Physical Elements", "physical_elements"), ("INT/EXT", "int_ext"),
+        ("Focal Distance", "camera_focal_distance"), ("Camera Height", "camera_height"),
+        ("Resolution", "resolution"), ("FPS", "fps"), ("UE Environment", "ue_environment_name"),
+        ("Camera Angle", "camera_angle"), ("Downtime (min)", "shoot_downtime"),
+        ("TC In", "timecode_in"), ("TC Out", "timecode_out"),
+        ("Ready Render", "ready_for_render"), ("Ready Comp", "ready_for_comp"), ("Comp Artist", "comp_artist")
+    ]
+    
+    # Header style
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1B1B1B", end_color="1B1B1B", fill_type="solid")
+    
+    # Write project info
+    ws["A1"] = f"Project: {sheet['project_name']}"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A2"] = f"Date: {sheet['project_date']} | Director: {sheet.get('director', 'N/A')} | Log Artist: {sheet['log_artist']}"
+    ws["A3"] = f"Day {sheet.get('current_shoot_day', 'N/A')} of {sheet.get('total_shoot_days', 'N/A')}"
+    
+    # Write headers
+    for col, (header, _) in enumerate(columns, 1):
+        cell = ws.cell(row=5, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center")
+    
+    # Write data with color coding
+    go_fill = PatternFill(start_color="D1FAE5", end_color="D1FAE5", fill_type="solid")
+    ng_fill = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
+    downtime_fill = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
+    
+    for row_num, entry in enumerate(entries, 6):
+        row_fill = None
+        if entry.get("go_ng") == "Go":
+            row_fill = go_fill
+        elif entry.get("go_ng") == "NG":
+            row_fill = ng_fill
+        elif entry.get("shoot_downtime") and entry.get("shoot_downtime") > 10:
+            row_fill = downtime_fill
+        
+        for col, (_, field) in enumerate(columns, 1):
+            value = entry.get(field, "")
+            if isinstance(value, bool):
+                value = "Yes" if value else "No"
+            cell = ws.cell(row=row_num, column=col, value=value)
+            if row_fill:
+                cell.fill = row_fill
+    
+    # Auto-adjust column widths
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[column].width = min(max_length + 2, 30)
+    
+    # Save to buffer
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = f"{sheet['name'].replace(' ', '_')}_{sheet['project_date']}.xlsx"
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+# ==================== END SHOOT LOG ROUTES ====================
+
 app.include_router(api_router)
 
 app.add_middleware(
