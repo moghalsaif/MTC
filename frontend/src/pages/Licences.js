@@ -593,14 +593,19 @@ export default function Licences() {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs mb-1 block">Seats</Label>
-                <Input type="number" value={newLicenceForm.seats} onChange={(e) => setNewLicenceForm({...newLicenceForm, seats: e.target.value})} className="bg-[#1B1B1B] border-[#3F3F46] h-9 text-sm" />
+                <Label className="text-xs mb-1 block">Licence Type</Label>
+                <Select value={newLicenceForm.licence_type} onValueChange={(val) => setNewLicenceForm({...newLicenceForm, licence_type: val})}>
+                  <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-[#27272A] border-[#3F3F46]">
+                    {['Monthly', 'Annual', 'Lifetime'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs mb-1 block">Cost (₹) *</Label>
-                <Input type="number" value={newLicenceForm.cost_per_period} onChange={(e) => setNewLicenceForm({...newLicenceForm, cost_per_period: e.target.value})} className="bg-[#1B1B1B] border-[#3F3F46] h-9 text-sm" />
+                <Label className="text-xs mb-1 block">Seats</Label>
+                <Input type="number" value={newLicenceForm.seats} onChange={(e) => setNewLicenceForm({...newLicenceForm, seats: e.target.value})} className="bg-[#1B1B1B] border-[#3F3F46] h-9 text-sm" />
               </div>
               <div>
                 <Label className="text-xs mb-1 block">Billing Period</Label>
@@ -614,18 +619,22 @@ export default function Licences() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
+                <Label className="text-xs mb-1 block">Cost (₹) *</Label>
+                <Input type="number" value={newLicenceForm.cost_per_period} onChange={(e) => setNewLicenceForm({...newLicenceForm, cost_per_period: e.target.value})} className="bg-[#1B1B1B] border-[#3F3F46] h-9 text-sm" />
+              </div>
+              <div>
                 <Label className="text-xs mb-1 block">Renewal Date</Label>
                 <Input type="date" value={newLicenceForm.renewal_date} onChange={(e) => setNewLicenceForm({...newLicenceForm, renewal_date: e.target.value})} className="bg-[#1B1B1B] border-[#3F3F46] h-9 text-sm" />
               </div>
-              <div>
-                <Label className="text-xs mb-1 block">Status</Label>
-                <Select value={newLicenceForm.status} onValueChange={(val) => setNewLicenceForm({...newLicenceForm, status: val})}>
-                  <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-[#27272A] border-[#3F3F46]">
-                    {['Active', 'Expiring Soon', 'Expired', 'Cancelled'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">Status</Label>
+              <Select value={newLicenceForm.status} onValueChange={(val) => setNewLicenceForm({...newLicenceForm, status: val})}>
+                <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-[#27272A] border-[#3F3F46]">
+                  {['Active', 'Expiring Soon', 'Expired', 'Cancelled'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="border-t border-[#3F3F46] pt-3 mt-3">
               <Label className="text-xs text-[#71717A] mb-2 block">Account Credentials</Label>
