@@ -286,6 +286,148 @@ class AssetUpdate(BaseModel):
     licence_type: Optional[str] = None
     notes: Optional[str] = None
 
+# ==================== SHOOT LOG MODELS ====================
+# Master Log Sheet Schema - All 28 columns for production logging
+
+class LogSheet(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str  # e.g., "Master Sheet", "Day 01", "Scene 12", "Unit B"
+    sheet_type: str = "derived"  # "master" or "derived"
+    is_master: bool = False
+    is_visible: bool = True
+    is_locked: bool = False  # Lock column structure
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_by: Optional[str] = None
+
+class LogSheetCreate(BaseModel):
+    name: str
+    sheet_type: str = "derived"
+    duplicate_from: Optional[str] = None  # Sheet ID to duplicate from
+
+class LogSheetUpdate(BaseModel):
+    name: Optional[str] = None
+    is_visible: Optional[bool] = None
+    is_locked: Optional[bool] = None
+
+class LogEntry(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    sheet_id: str
+    row_order: int = 0  # For maintaining row order
+    
+    # Core Shot Info
+    scene_no: Optional[str] = None
+    shot_no: Optional[str] = None
+    shot_description: Optional[str] = None
+    ki_pro_take_name: Optional[str] = None
+    camera_footage_name: Optional[str] = None
+    go_ng: Optional[str] = None  # "Go" or "NG"
+    notes: Optional[str] = None
+    
+    # Physical Camera Settings
+    physical_lens: Optional[str] = None
+    virtual_lens: Optional[str] = None
+    white_balance: Optional[str] = None
+    iso: Optional[int] = None
+    aperture: Optional[float] = None
+    shutter: Optional[str] = None
+    
+    # Time & Duration
+    shoot_time: Optional[str] = None  # HH:MM:SS
+    shoot_downtime: Optional[int] = None  # Minutes
+    timecode_in: Optional[str] = None  # HH:MM:SS:FF
+    timecode_out: Optional[str] = None  # HH:MM:SS:FF
+    
+    # Scene Context
+    physical_elements: Optional[str] = None  # Props / Set / Actors
+    int_ext: Optional[str] = None  # "INT" or "EXT"
+    
+    # Camera Position
+    camera_focal_distance: Optional[str] = None
+    camera_height: Optional[str] = None
+    camera_angle: Optional[str] = None  # Wide / Mid / Close / POV / Custom
+    
+    # Technical Settings
+    resolution: Optional[str] = None  # 4K, 2K, 1080p, etc.
+    fps: Optional[int] = None
+    ue_environment_name: Optional[str] = None
+    
+    # Post-Production Workflow
+    ready_for_render: bool = False
+    ready_for_comp: bool = False
+    comp_artist: Optional[str] = None
+    
+    # Metadata
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class LogEntryCreate(BaseModel):
+    sheet_id: str
+    scene_no: Optional[str] = None
+    shot_no: Optional[str] = None
+    shot_description: Optional[str] = None
+    ki_pro_take_name: Optional[str] = None
+    camera_footage_name: Optional[str] = None
+    go_ng: Optional[str] = None
+    notes: Optional[str] = None
+    physical_lens: Optional[str] = None
+    virtual_lens: Optional[str] = None
+    white_balance: Optional[str] = None
+    iso: Optional[int] = None
+    aperture: Optional[float] = None
+    shutter: Optional[str] = None
+    shoot_time: Optional[str] = None
+    shoot_downtime: Optional[int] = None
+    timecode_in: Optional[str] = None
+    timecode_out: Optional[str] = None
+    physical_elements: Optional[str] = None
+    int_ext: Optional[str] = None
+    camera_focal_distance: Optional[str] = None
+    camera_height: Optional[str] = None
+    camera_angle: Optional[str] = None
+    resolution: Optional[str] = None
+    fps: Optional[int] = None
+    ue_environment_name: Optional[str] = None
+    ready_for_render: bool = False
+    ready_for_comp: bool = False
+    comp_artist: Optional[str] = None
+
+class LogEntryUpdate(BaseModel):
+    scene_no: Optional[str] = None
+    shot_no: Optional[str] = None
+    shot_description: Optional[str] = None
+    ki_pro_take_name: Optional[str] = None
+    camera_footage_name: Optional[str] = None
+    go_ng: Optional[str] = None
+    notes: Optional[str] = None
+    physical_lens: Optional[str] = None
+    virtual_lens: Optional[str] = None
+    white_balance: Optional[str] = None
+    iso: Optional[int] = None
+    aperture: Optional[float] = None
+    shutter: Optional[str] = None
+    shoot_time: Optional[str] = None
+    shoot_downtime: Optional[int] = None
+    timecode_in: Optional[str] = None
+    timecode_out: Optional[str] = None
+    physical_elements: Optional[str] = None
+    int_ext: Optional[str] = None
+    camera_focal_distance: Optional[str] = None
+    camera_height: Optional[str] = None
+    camera_angle: Optional[str] = None
+    resolution: Optional[str] = None
+    fps: Optional[int] = None
+    ue_environment_name: Optional[str] = None
+    ready_for_render: Optional[bool] = None
+    ready_for_comp: Optional[bool] = None
+    comp_artist: Optional[str] = None
+    row_order: Optional[int] = None
+
+class LogEntryBulkUpdate(BaseModel):
+    entries: List[dict]  # List of {id: str, ...fields to update}
+
+# ==================== END SHOOT LOG MODELS ====================
+
 class LostItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     item_id: str
