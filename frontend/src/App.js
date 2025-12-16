@@ -12,6 +12,7 @@ import Licences from './pages/Licences';
 import Issues from './pages/Issues';
 import LostItems from './pages/LostItems';
 import Maintenance from './pages/Maintenance';
+import ShootLogs from './pages/ShootLogs';
 import Layout from './components/Layout';
 
 const PrivateRoute = ({ children }) => {
