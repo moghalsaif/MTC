@@ -780,7 +780,7 @@ export default function Licences() {
                 <Select value={newAssetForm.category} onValueChange={(val) => setNewAssetForm({...newAssetForm, category: val})}>
                   <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-[#27272A] border-[#3F3F46]">
-                    {['Stock Footage', '3D Models', 'Sound Effects', 'Music', 'Templates', 'Plugins', 'Other'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    {['Stock Footage', '3D Models', 'Sound Effects', 'Music', 'Templates', 'Plugins', 'Environments', 'Motion Capture', 'Other'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -853,7 +853,7 @@ export default function Licences() {
                 <Select value={editAssetForm.category} onValueChange={(val) => setEditAssetForm({...editAssetForm, category: val})}>
                   <SelectTrigger className="bg-[#1B1B1B] border-[#3F3F46] h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-[#27272A] border-[#3F3F46]">
-                    {['Stock Footage', '3D Models', 'Sound Effects', 'Music', 'Templates', 'Plugins', 'Other'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    {['Stock Footage', '3D Models', 'Sound Effects', 'Music', 'Templates', 'Plugins', 'Environments', 'Motion Capture', 'Other'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
