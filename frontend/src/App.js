@@ -49,6 +49,7 @@ function AppRoutes() {
         <Route path="issues" element={<Issues />} />
         <Route path="lost-items" element={<LostItems />} />
         <Route path="maintenance" element={<Maintenance />} />
+        <Route path="shoot-logs" element={<ShootLogs />} />
       </Route>
     </Routes>
   );
