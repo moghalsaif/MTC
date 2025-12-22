@@ -62,6 +62,8 @@ function AppRoutes() {
         <Route path="lost-items" element={<LostItems />} />
         <Route path="maintenance" element={<Maintenance />} />
         <Route path="shoot-logs" element={<ShootLogs />} />
+        <Route path="employees" element={<Employees />} />
+        <Route path="tasks" element={<Tasks />} />
       </Route>
     </Routes>
   );
