@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Toaster } from './components/ui/sonner';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import CommandCenter from './pages/CommandCenter';
 import Inventory from './pages/Inventory';
 import ItemsOut from './pages/ItemsOut';
 import Projects from './pages/Projects';
