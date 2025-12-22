@@ -127,19 +127,183 @@ class Project(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     location: Optional[str] = None
+    # Geo-coordinates for global map
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    # Project details
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     owner: Optional[str] = None
-    status: str = "Planning"
+    client: Optional[str] = None
+    budget: Optional[float] = None
+    revenue: Optional[float] = None
+    project_type: Optional[str] = None  # Film, Commercial, Music Video, etc.
+    status: str = "Planning"  # Planning, On Track, At Risk, Delayed, Delivered, Archived
+    priority: str = "Medium"  # Low, Medium, High, Critical
+    progress: int = 0  # 0-100%
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class ProjectCreate(BaseModel):
     name: str
     location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     owner: Optional[str] = None
+    client: Optional[str] = None
+    budget: Optional[float] = None
+    revenue: Optional[float] = None
+    project_type: Optional[str] = None
     status: Optional[str] = "Planning"
+    priority: Optional[str] = "Medium"
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    owner: Optional[str] = None
+    client: Optional[str] = None
+    budget: Optional[float] = None
+    revenue: Optional[float] = None
+    project_type: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    progress: Optional[int] = None
+
+# ==================== EMPLOYEE & TASK MODELS ====================
+
+class Employee(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    email: str
+    role: str  # Owner, Manager, Lead, Senior, Junior, Intern
+    department: Optional[str] = None
+    avatar_url: Optional[str] = None
+    status: str = "Active"  # Active, Idle, In Meeting, On Break, Offline
+    current_task_id: Optional[str] = None
+    location: Optional[str] = None
+    timezone: Optional[str] = None
+    hire_date: Optional[str] = None
+    hourly_rate: Optional[float] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class EmployeeCreate(BaseModel):
+    name: str
+    email: str
+    role: str
+    department: Optional[str] = None
+    location: Optional[str] = None
+    timezone: Optional[str] = None
+    hire_date: Optional[str] = None
+    hourly_rate: Optional[float] = None
+
+class EmployeeUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    department: Optional[str] = None
+    status: Optional[str] = None
+    current_task_id: Optional[str] = None
+    location: Optional[str] = None
+    timezone: Optional[str] = None
+    hourly_rate: Optional[float] = None
+
+class Task(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    milestone_id: Optional[str] = None
+    parent_task_id: Optional[str] = None  # For sub-tasks
+    title: str
+    description: Optional[str] = None
+    assignee_id: Optional[str] = None
+    assignee_name: Optional[str] = None
+    reviewer_id: Optional[str] = None
+    status: str = "Not Started"  # Not Started, In Progress, Waiting for Input, Under Review, Changes Requested, Approved, Delivered
+    priority: str = "Medium"  # Low, Medium, High, Critical
+    estimated_hours: Optional[float] = None
+    actual_hours: float = 0
+    deadline: Optional[str] = None
+    buffer_days: int = 0
+    dependencies: List[str] = []  # Task IDs this depends on
+    tags: List[str] = []
+    is_locked: bool = False
+    order: int = 0
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class TaskCreate(BaseModel):
+    project_id: str
+    milestone_id: Optional[str] = None
+    parent_task_id: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    assignee_id: Optional[str] = None
+    reviewer_id: Optional[str] = None
+    priority: Optional[str] = "Medium"
+    estimated_hours: Optional[float] = None
+    deadline: Optional[str] = None
+    buffer_days: Optional[int] = 0
+    dependencies: Optional[List[str]] = []
+    tags: Optional[List[str]] = []
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    assignee_id: Optional[str] = None
+    reviewer_id: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    estimated_hours: Optional[float] = None
+    actual_hours: Optional[float] = None
+    deadline: Optional[str] = None
+    buffer_days: Optional[int] = None
+    dependencies: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    is_locked: Optional[bool] = None
+    order: Optional[int] = None
+
+class TimeEntry(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    employee_id: str
+    employee_name: Optional[str] = None
+    task_id: str
+    task_title: Optional[str] = None
+    project_id: str
+    start_time: str
+    end_time: Optional[str] = None
+    duration_minutes: int = 0
+    description: Optional[str] = None
+    is_active: bool = True
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class TimeEntryCreate(BaseModel):
+    employee_id: str
+    task_id: str
+    project_id: str
+    description: Optional[str] = None
+
+class ActivityLog(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    user_name: str
+    action: str  # created, updated, deleted, started, stopped, uploaded, commented, status_changed
+    entity_type: str  # project, task, file, time_entry, employee
+    entity_id: str
+    entity_name: Optional[str] = None
+    details: Optional[dict] = None
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# ==================== END EMPLOYEE & TASK MODELS ====================
 
 class MarkOutRequest(BaseModel):
     item_id: str
