@@ -34,6 +34,15 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      {/* Command Center - Full screen without layout */}
+      <Route
+        path="/command"
+        element={
+          <PrivateRoute>
+            <CommandCenter />
+          </PrivateRoute>
+        }
+      />
       <Route
         path="/"
         element={
