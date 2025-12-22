@@ -2182,6 +2182,417 @@ async def export_log_sheet_excel(sheet_id: str, current_user: dict = Depends(get
 
 # ==================== END SHOOT LOG ROUTES ====================
 
+# ==================== EMPLOYEE ROUTES ====================
+
+@api_router.get("/employees")
+async def get_employees(current_user: dict = Depends(get_current_user)):
+    employees = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    # Add current task info
+    for emp in employees:
+        if emp.get("current_task_id"):
+            task = await db.tasks.find_one({"id": emp["current_task_id"]}, {"_id": 0})
+            emp["current_task"] = task
+        # Calculate today's hours
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        today_entries = await db.time_entries.find({
+            "employee_id": emp["id"],
+            "start_time": {"$gte": today_start}
+        }, {"_id": 0}).to_list(100)
+        emp["hours_today"] = sum(e.get("duration_minutes", 0) for e in today_entries) / 60
+    return employees
+
+@api_router.get("/employees/{employee_id}")
+async def get_employee(employee_id: str, current_user: dict = Depends(get_current_user)):
+    employee = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return employee
+
+@api_router.post("/employees")
+async def create_employee(emp_data: EmployeeCreate, current_user: dict = Depends(get_current_user)):
+    emp = Employee(**emp_data.model_dump())
+    await db.employees.insert_one(emp.model_dump())
+    
+    # Log activity
+    await log_activity(current_user, "created", "employee", emp.id, emp.name)
+    return emp
+
+@api_router.put("/employees/{employee_id}")
+async def update_employee(employee_id: str, emp_data: EmployeeUpdate, current_user: dict = Depends(get_current_user)):
+    existing = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    update_data = {k: v for k, v in emp_data.model_dump().items() if v is not None}
+    await db.employees.update_one({"id": employee_id}, {"$set": update_data})
+    
+    updated = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    await log_activity(current_user, "updated", "employee", employee_id, existing.get("name"))
+    return updated
+
+@api_router.delete("/employees/{employee_id}")
+async def delete_employee(employee_id: str, current_user: dict = Depends(get_current_user)):
+    existing = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    await db.employees.delete_one({"id": employee_id})
+    await log_activity(current_user, "deleted", "employee", employee_id, existing.get("name"))
+    return {"message": "Employee deleted successfully"}
+
+# ==================== TASK ROUTES ====================
+
+@api_router.get("/tasks")
+async def get_tasks(
+    current_user: dict = Depends(get_current_user),
+    project_id: Optional[str] = None,
+    assignee_id: Optional[str] = None,
+    status: Optional[str] = None,
+    priority: Optional[str] = None
+):
+    query = {}
+    if project_id:
+        query["project_id"] = project_id
+    if assignee_id:
+        query["assignee_id"] = assignee_id
+    if status:
+        query["status"] = status
+    if priority:
+        query["priority"] = priority
+    
+    tasks = await db.tasks.find(query, {"_id": 0}).to_list(1000)
+    return sorted(tasks, key=lambda x: (x.get("order", 0), x.get("created_at", "")))
+
+@api_router.get("/tasks/{task_id}")
+async def get_task(task_id: str, current_user: dict = Depends(get_current_user)):
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Get sub-tasks
+    subtasks = await db.tasks.find({"parent_task_id": task_id}, {"_id": 0}).to_list(100)
+    task["subtasks"] = subtasks
+    
+    # Get time entries
+    time_entries = await db.time_entries.find({"task_id": task_id}, {"_id": 0}).to_list(100)
+    task["time_entries"] = time_entries
+    task["total_logged_hours"] = sum(e.get("duration_minutes", 0) for e in time_entries) / 60
+    
+    return task
+
+@api_router.post("/tasks")
+async def create_task(task_data: TaskCreate, current_user: dict = Depends(get_current_user)):
+    task_dict = task_data.model_dump()
+    
+    # Get assignee name if assignee_id provided
+    if task_dict.get("assignee_id"):
+        assignee = await db.employees.find_one({"id": task_dict["assignee_id"]}, {"_id": 0})
+        task_dict["assignee_name"] = assignee.get("name") if assignee else None
+    
+    task = Task(**task_dict)
+    await db.tasks.insert_one(task.model_dump())
+    
+    await log_activity(current_user, "created", "task", task.id, task.title)
+    return task
+
+@api_router.put("/tasks/{task_id}")
+async def update_task(task_id: str, task_data: TaskUpdate, current_user: dict = Depends(get_current_user)):
+    existing = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    if existing.get("is_locked"):
+        raise HTTPException(status_code=400, detail="Task is locked")
+    
+    update_data = {k: v for k, v in task_data.model_dump().items() if v is not None}
+    
+    # Get assignee name if assignee_id changed
+    if "assignee_id" in update_data:
+        assignee = await db.employees.find_one({"id": update_data["assignee_id"]}, {"_id": 0})
+        update_data["assignee_name"] = assignee.get("name") if assignee else None
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.tasks.update_one({"id": task_id}, {"$set": update_data})
+    
+    # Log status changes
+    if "status" in update_data and update_data["status"] != existing.get("status"):
+        await log_activity(current_user, "status_changed", "task", task_id, existing.get("title"), 
+                          {"from": existing.get("status"), "to": update_data["status"]})
+    
+    updated = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/tasks/{task_id}")
+async def delete_task(task_id: str, current_user: dict = Depends(get_current_user)):
+    existing = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Delete subtasks
+    await db.tasks.delete_many({"parent_task_id": task_id})
+    await db.tasks.delete_one({"id": task_id})
+    
+    await log_activity(current_user, "deleted", "task", task_id, existing.get("title"))
+    return {"message": "Task deleted successfully"}
+
+# ==================== TIME TRACKING ROUTES ====================
+
+@api_router.post("/time-entries/start")
+async def start_time_entry(entry_data: TimeEntryCreate, current_user: dict = Depends(get_current_user)):
+    # Stop any active time entry for this employee
+    await db.time_entries.update_many(
+        {"employee_id": entry_data.employee_id, "is_active": True},
+        {"$set": {"is_active": False, "end_time": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Get task and employee info
+    task = await db.tasks.find_one({"id": entry_data.task_id}, {"_id": 0})
+    employee = await db.employees.find_one({"id": entry_data.employee_id}, {"_id": 0})
+    
+    entry = TimeEntry(
+        employee_id=entry_data.employee_id,
+        employee_name=employee.get("name") if employee else None,
+        task_id=entry_data.task_id,
+        task_title=task.get("title") if task else None,
+        project_id=entry_data.project_id,
+        start_time=datetime.now(timezone.utc).isoformat(),
+        description=entry_data.description
+    )
+    await db.time_entries.insert_one(entry.model_dump())
+    
+    # Update employee status
+    await db.employees.update_one(
+        {"id": entry_data.employee_id},
+        {"$set": {"status": "Active", "current_task_id": entry_data.task_id}}
+    )
+    
+    await log_activity(current_user, "started", "time_entry", entry.id, task.get("title") if task else None)
+    return entry
+
+@api_router.post("/time-entries/stop/{entry_id}")
+async def stop_time_entry(entry_id: str, current_user: dict = Depends(get_current_user)):
+    entry = await db.time_entries.find_one({"id": entry_id}, {"_id": 0})
+    if not entry:
+        raise HTTPException(status_code=404, detail="Time entry not found")
+    
+    end_time = datetime.now(timezone.utc)
+    start_time = datetime.fromisoformat(entry["start_time"].replace("Z", "+00:00"))
+    duration = int((end_time - start_time).total_seconds() / 60)
+    
+    await db.time_entries.update_one(
+        {"id": entry_id},
+        {"$set": {
+            "is_active": False,
+            "end_time": end_time.isoformat(),
+            "duration_minutes": duration
+        }}
+    )
+    
+    # Update task actual hours
+    if entry.get("task_id"):
+        await db.tasks.update_one(
+            {"id": entry["task_id"]},
+            {"$inc": {"actual_hours": duration / 60}}
+        )
+    
+    # Update employee status
+    await db.employees.update_one(
+        {"id": entry["employee_id"]},
+        {"$set": {"status": "Idle", "current_task_id": None}}
+    )
+    
+    await log_activity(current_user, "stopped", "time_entry", entry_id, entry.get("task_title"))
+    
+    updated = await db.time_entries.find_one({"id": entry_id}, {"_id": 0})
+    return updated
+
+@api_router.get("/time-entries")
+async def get_time_entries(
+    current_user: dict = Depends(get_current_user),
+    employee_id: Optional[str] = None,
+    task_id: Optional[str] = None,
+    project_id: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None
+):
+    query = {}
+    if employee_id:
+        query["employee_id"] = employee_id
+    if task_id:
+        query["task_id"] = task_id
+    if project_id:
+        query["project_id"] = project_id
+    if date_from:
+        query["start_time"] = {"$gte": date_from}
+    if date_to:
+        if "start_time" in query:
+            query["start_time"]["$lte"] = date_to
+        else:
+            query["start_time"] = {"$lte": date_to}
+    
+    entries = await db.time_entries.find(query, {"_id": 0}).to_list(1000)
+    return sorted(entries, key=lambda x: x.get("start_time", ""), reverse=True)
+
+# ==================== ACTIVITY LOG ROUTES ====================
+
+async def log_activity(user: dict, action: str, entity_type: str, entity_id: str, entity_name: str = None, details: dict = None):
+    log = ActivityLog(
+        user_id=user.get("id", user.get("email")),
+        user_name=user.get("name", user.get("email")),
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        entity_name=entity_name,
+        details=details
+    )
+    await db.activity_logs.insert_one(log.model_dump())
+
+@api_router.get("/activity-logs")
+async def get_activity_logs(
+    current_user: dict = Depends(get_current_user),
+    user_id: Optional[str] = None,
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    action: Optional[str] = None,
+    limit: int = 100
+):
+    query = {}
+    if user_id:
+        query["user_id"] = user_id
+    if entity_type:
+        query["entity_type"] = entity_type
+    if entity_id:
+        query["entity_id"] = entity_id
+    if action:
+        query["action"] = action
+    
+    logs = await db.activity_logs.find(query, {"_id": 0}).sort("timestamp", -1).to_list(limit)
+    return logs
+
+# ==================== COMMAND DASHBOARD ROUTES ====================
+
+@api_router.get("/dashboard/command-center")
+async def get_command_center_data(current_user: dict = Depends(get_current_user)):
+    # Projects with geo data
+    projects = await db.projects.find({}, {"_id": 0}).to_list(1000)
+    
+    # Employees with status
+    employees = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    
+    # Calculate utilization
+    active_employees = len([e for e in employees if e.get("status") == "Active"])
+    total_employees = len(employees)
+    utilization = (active_employees / total_employees * 100) if total_employees > 0 else 0
+    
+    # Tasks overview
+    all_tasks = await db.tasks.find({}, {"_id": 0}).to_list(5000)
+    tasks_by_status = {}
+    for task in all_tasks:
+        status = task.get("status", "Unknown")
+        tasks_by_status[status] = tasks_by_status.get(status, 0) + 1
+    
+    # Bottlenecks - tasks that are blocked or overdue
+    now = datetime.now(timezone.utc).isoformat()
+    bottlenecks = [t for t in all_tasks if 
+                   t.get("status") in ["Waiting for Input", "Blocked", "Changes Requested"] or
+                   (t.get("deadline") and t.get("deadline") < now and t.get("status") not in ["Delivered", "Approved"])]
+    
+    # High-risk deadlines (within 3 days)
+    three_days_later = (datetime.now(timezone.utc) + timedelta(days=3)).isoformat()
+    high_risk = [t for t in all_tasks if 
+                 t.get("deadline") and t.get("deadline") <= three_days_later and 
+                 t.get("status") not in ["Delivered", "Approved"]]
+    
+    # Project status breakdown
+    project_status = {}
+    for p in projects:
+        status = p.get("status", "Unknown")
+        project_status[status] = project_status.get(status, 0) + 1
+    
+    # Recent activity
+    recent_activity = await db.activity_logs.find({}, {"_id": 0}).sort("timestamp", -1).to_list(20)
+    
+    return {
+        "projects": {
+            "total": len(projects),
+            "by_status": project_status,
+            "geo_data": [
+                {
+                    "id": p["id"],
+                    "name": p["name"],
+                    "lat": p.get("latitude"),
+                    "lng": p.get("longitude"),
+                    "city": p.get("city"),
+                    "country": p.get("country"),
+                    "status": p.get("status"),
+                    "progress": p.get("progress", 0)
+                }
+                for p in projects if p.get("latitude") and p.get("longitude")
+            ]
+        },
+        "employees": {
+            "total": total_employees,
+            "active": active_employees,
+            "idle": len([e for e in employees if e.get("status") == "Idle"]),
+            "utilization_percent": round(utilization, 1)
+        },
+        "tasks": {
+            "total": len(all_tasks),
+            "by_status": tasks_by_status,
+            "bottlenecks": len(bottlenecks),
+            "high_risk_deadlines": len(high_risk)
+        },
+        "bottleneck_details": bottlenecks[:10],
+        "high_risk_details": high_risk[:10],
+        "recent_activity": recent_activity
+    }
+
+@api_router.get("/dashboard/employee-stats/{employee_id}")
+async def get_employee_stats(employee_id: str, current_user: dict = Depends(get_current_user)):
+    employee = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Get all time entries
+    time_entries = await db.time_entries.find({"employee_id": employee_id}, {"_id": 0}).to_list(1000)
+    
+    # Today
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    today_entries = [e for e in time_entries if e.get("start_time", "") >= today_start]
+    hours_today = sum(e.get("duration_minutes", 0) for e in today_entries) / 60
+    
+    # This week
+    week_start = (datetime.now(timezone.utc) - timedelta(days=datetime.now().weekday())).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    week_entries = [e for e in time_entries if e.get("start_time", "") >= week_start]
+    hours_this_week = sum(e.get("duration_minutes", 0) for e in week_entries) / 60
+    
+    # Tasks assigned
+    tasks = await db.tasks.find({"assignee_id": employee_id}, {"_id": 0}).to_list(1000)
+    tasks_by_status = {}
+    for task in tasks:
+        status = task.get("status", "Unknown")
+        tasks_by_status[status] = tasks_by_status.get(status, 0) + 1
+    
+    # Recent activity
+    activity = await db.activity_logs.find({"user_id": employee_id}, {"_id": 0}).sort("timestamp", -1).to_list(20)
+    
+    return {
+        "employee": employee,
+        "time_tracking": {
+            "hours_today": round(hours_today, 2),
+            "hours_this_week": round(hours_this_week, 2),
+            "total_entries": len(time_entries)
+        },
+        "tasks": {
+            "total_assigned": len(tasks),
+            "by_status": tasks_by_status,
+            "current_tasks": [t for t in tasks if t.get("status") not in ["Delivered", "Approved"]][:5]
+        },
+        "recent_activity": activity
+    }
+
+# ==================== END COMMAND CENTER ROUTES ====================
+
 app.include_router(api_router)
 
 app.add_middleware(
