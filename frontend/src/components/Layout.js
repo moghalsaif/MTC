@@ -31,6 +31,7 @@ export default function Layout() {
 
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/command', icon: Globe, label: 'Command Center' },
     { path: '/inventory', icon: Package, label: 'Inventory' },
     { path: '/items-out', icon: PackageOpen, label: 'Items Out' },
     { path: '/projects', icon: FolderKanban, label: 'Projects' },
