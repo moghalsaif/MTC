@@ -31,11 +31,8 @@ export default function Layout() {
 
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/command', icon: Globe, label: 'Command Center' },
-    { path: '/employees', icon: Users, label: 'Team' },
-    { path: '/tasks', icon: ListTodo, label: 'Tasks' },
+    { path: '/command', icon: Command, label: 'Command Center' },
     { path: '/projects', icon: FolderKanban, label: 'Projects' },
-    { path: '/shoot-logs', icon: FileSpreadsheet, label: 'Shoot Logs' },
     { path: '/inventory', icon: Package, label: 'Inventory' },
     { path: '/items-out', icon: PackageOpen, label: 'Items Out' },
     { path: '/licences', icon: CreditCard, label: 'Licences' },
