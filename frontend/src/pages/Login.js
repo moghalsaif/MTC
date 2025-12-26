@@ -62,7 +62,7 @@ export default function Login() {
             )}
             <div>
               <Label htmlFor="email" className="text-white text-sm font-medium mb-2 block">
-                Email
+                Email {!isLogin && <span className="text-[#F9982E] text-xs">(@machvisuals.com only)</span>}
               </Label>
               <Input
                 id="email"
@@ -71,6 +71,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                placeholder={!isLogin ? "yourname@machvisuals.com" : ""}
                 className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12 rounded-xl"
               />
             </div>
