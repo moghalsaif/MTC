@@ -667,8 +667,17 @@ class ReservationCreate(BaseModel):
     end_date: str
 
 # Auth Routes
+ALLOWED_EMAIL_DOMAIN = "@machvisuals.com"
+
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user_data: UserRegister):
+    # Validate email domain - only @machvisuals.com allowed
+    if not user_data.email.lower().endswith(ALLOWED_EMAIL_DOMAIN):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Registration restricted to {ALLOWED_EMAIL_DOMAIN} email addresses only"
+        )
+    
     existing = await db.users.find_one({"email": user_data.email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
