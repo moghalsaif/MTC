@@ -305,6 +305,149 @@ class ActivityLog(BaseModel):
 
 # ==================== END EMPLOYEE & TASK MODELS ====================
 
+# ==================== CONTINUITYGUARD MODELS (AI CHECKLIST) ====================
+
+class VPScene(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    scene_number: str
+    description: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class VPShot(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    scene_id: str
+    shot_number: str
+    shot_type: Optional[str] = None  # Wide, Medium, Close-up, POV, etc.
+    description: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class CameraMetadata(BaseModel):
+    camera_id: Optional[str] = None
+    sensor_mode: Optional[str] = None
+    resolution: Optional[str] = None
+    fps: Optional[float] = None
+    focal_length_mm: Optional[float] = None
+    aperture_t_stop: Optional[float] = None
+    focus_distance_m: Optional[float] = None
+    iso: Optional[int] = None
+    white_balance_k: Optional[int] = None
+    shutter_angle: Optional[float] = None
+    camera_height_cm: Optional[float] = None
+    camera_tilt_deg: Optional[float] = None
+    camera_roll_deg: Optional[float] = None
+
+class LightingMetadata(BaseModel):
+    key_light_type: Optional[str] = None
+    key_light_intensity: Optional[float] = None
+    key_light_angle_deg: Optional[float] = None
+    fill_light_intensity: Optional[float] = None
+    fill_light_angle_deg: Optional[float] = None
+    back_light_intensity: Optional[float] = None
+    back_light_angle_deg: Optional[float] = None
+    color_temperature_k: Optional[int] = None
+
+class ChromaMetadata(BaseModel):
+    chroma_color: Optional[str] = "green"  # green / blue
+    chroma_light_evenness_score: Optional[float] = None  # 0-100
+    spill_level: Optional[str] = "low"  # low / medium / high
+    shadow_on_chroma: Optional[str] = "none"  # none / mild / heavy
+    screen_distance_from_subject_m: Optional[float] = None
+    floor_visibility: Optional[bool] = False
+
+class UnrealMetadata(BaseModel):
+    environment_name: Optional[str] = None
+    environment_version: Optional[str] = None
+    virtual_camera_fov: Optional[float] = None
+    virtual_camera_height: Optional[float] = None
+    horizon_height: Optional[float] = None
+    virtual_sun_azimuth_deg: Optional[float] = None
+    virtual_sun_elevation_deg: Optional[float] = None
+    virtual_exposure: Optional[float] = None
+    virtual_color_temperature: Optional[int] = None
+
+class SystemMetadata(BaseModel):
+    tracking_system: Optional[str] = "none"  # none / vive / optical
+    tracking_status: Optional[str] = "OK"  # OK / DRIFT / LOST
+    calibration_timestamp: Optional[str] = None
+
+class VPTake(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    shot_id: str
+    take_number: int
+    is_reference: bool = False
+    continuity_score: Optional[float] = None
+    continuity_status: Optional[str] = None  # MATCH / DRIFT / BREAK
+    
+    # Metadata
+    camera: Optional[CameraMetadata] = None
+    lighting: Optional[LightingMetadata] = None
+    chroma: Optional[ChromaMetadata] = None
+    unreal: Optional[UnrealMetadata] = None
+    system: Optional[SystemMetadata] = None
+    
+    # Diagnostics
+    issues: Optional[List[dict]] = None
+    notes: Optional[str] = None
+    
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class VPSceneCreate(BaseModel):
+    project_id: str
+    scene_number: str
+    description: Optional[str] = None
+
+class VPShotCreate(BaseModel):
+    scene_id: str
+    shot_number: str
+    shot_type: Optional[str] = None
+    description: Optional[str] = None
+
+class VPTakeCreate(BaseModel):
+    shot_id: str
+    take_number: int
+    camera: Optional[CameraMetadata] = None
+    lighting: Optional[LightingMetadata] = None
+    chroma: Optional[ChromaMetadata] = None
+    unreal: Optional[UnrealMetadata] = None
+    system: Optional[SystemMetadata] = None
+    notes: Optional[str] = None
+
+class VPTakeUpdate(BaseModel):
+    camera: Optional[CameraMetadata] = None
+    lighting: Optional[LightingMetadata] = None
+    chroma: Optional[ChromaMetadata] = None
+    unreal: Optional[UnrealMetadata] = None
+    system: Optional[SystemMetadata] = None
+    notes: Optional[str] = None
+
+# Continuity weights (configurable)
+CONTINUITY_WEIGHTS = {
+    "chroma_light_evenness": 25,
+    "spill_level": 20,
+    "shadow_on_chroma": 20,
+    "key_light_angle": 15,
+    "camera_height": 10,
+    "horizon_height": 15,
+    "virtual_sun_angle": 10,
+    "lens_mismatch": 20,
+    "tracking_drift": 15
+}
+
+# Severity thresholds
+SEVERITY_THRESHOLDS = {
+    "camera_height_cm": {"warning": 2, "fail": 5},
+    "key_light_angle_deg": {"warning": 3, "fail": 7},
+    "focal_length_mm": {"warning": 2, "fail": 5},
+    "virtual_sun_azimuth_deg": {"warning": 5, "fail": 15},
+    "virtual_sun_elevation_deg": {"warning": 3, "fail": 10},
+    "horizon_height": {"warning": 5, "fail": 15},
+    "chroma_light_evenness_score": {"warning": 10, "fail": 25}
+}
+
+# ==================== END CONTINUITYGUARD MODELS ====================
+
 class MarkOutRequest(BaseModel):
     item_id: str
     project_id: str
