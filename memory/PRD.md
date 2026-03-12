@@ -43,8 +43,9 @@ Equipment tracker dashboard for Mach Visuals, a virtual production company. The 
 
 ## What's Been Implemented (Feb 2026)
 - [x] Full equipment CRUD with 90 items from MASTER FINALS.xlsx
-- [x] 10 categories: Camera & Optics, Lighting, Audio, Video & Capture, Computing, Displays, Storage & Media, Networking, Power & Cables, Hardware & Tools
+- [x] 12 categories: Camera & Optics, Lighting, Audio, Video & Capture, Computing, Displays, Storage & Media, Networking, Power & Cables, Hardware & Tools, Tracking, Chroma Mat
 - [x] Sub-categories in data model
+- [x] Enhanced Add Item form with logging: Product ID, Serial Number, Purchase Date, Expiry Date, Warranty Expiry, Vendor, Purchase Price, Notes
 - [x] Inventory page with category sidebar, grouped view, and sub-category display
 - [x] Check-out / check-in workflow with partial returns
 - [x] Equipment transfer between projects
@@ -53,7 +54,8 @@ Equipment tracker dashboard for Mach Visuals, a virtual production company. The 
 - [x] Lost items tracking
 - [x] Maintenance scheduling
 - [x] Licence & asset management
-- [x] Dashboard with 7 stat cards + recent activity feed
+- [x] Dashboard with 7 stat cards (clean, no activity clutter)
+- [x] Documentation module: upload, download, delete files with categories (General, Contracts, Manuals, Insurance, Receipts, SOPs, Safety, Other)
 - [x] Grouped navigation: Mach Traffic Controller / Licences & Assets / Documentation
 - [x] Dark gradient background with orange accent
 - [x] @machvisuals.com email domain restriction
