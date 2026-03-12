@@ -45,6 +45,7 @@ Equipment tracker dashboard for Mach Visuals, a virtual production company. The 
 - [x] Full equipment CRUD with 90 items from MASTER FINALS.xlsx
 - [x] 10 categories: Camera & Optics, Lighting, Audio, Video & Capture, Computing, Displays, Storage & Media, Networking, Power & Cables, Hardware & Tools
 - [x] Sub-categories in data model
+- [x] Inventory page with category sidebar, grouped view, and sub-category display
 - [x] Check-out / check-in workflow with partial returns
 - [x] Equipment transfer between projects
 - [x] Project management (CRUD, status tracking)
