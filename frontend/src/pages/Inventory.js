@@ -22,6 +22,8 @@ const categoryIcons = {
   'Networking': 'N',
   'Power & Cables': 'P',
   'Hardware & Tools': 'H',
+  'Tracking': 'T',
+  'Chroma Mat': 'CM',
 };
 
 const categoryColors = {
@@ -35,6 +37,8 @@ const categoryColors = {
   'Networking': '#6366F1',
   'Power & Cables': '#EF4444',
   'Hardware & Tools': '#71717A',
+  'Tracking': '#14B8A6',
+  'Chroma Mat': '#22C55E',
 };
 
 export default function Inventory() {
@@ -49,7 +53,7 @@ export default function Inventory() {
   const [addItemDialog, setAddItemDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [markOutForm, setMarkOutForm] = useState({ project_id: '', quantity: 1, expected_return: '', notes: '' });
-  const [newItemForm, setNewItemForm] = useState({ name: '', category: '', total_quantity: 1, location_in_studio: '', min_stock: null });
+  const [newItemForm, setNewItemForm] = useState({ name: '', category: '', sub_category: '', total_quantity: 1, location_in_studio: '', min_stock: null, product_id: '', serial_number: '', purchase_date: '', expiry_date: '', warranty_expiry: '', vendor: '', purchase_price: '', notes: '' });
 
   useEffect(() => { fetchItems(); fetchProjects(); }, []);
 
@@ -146,10 +150,24 @@ export default function Inventory() {
       return;
     }
     try {
-      await axios.post(`${API}/items`, newItemForm);
+      const payload = { ...newItemForm };
+      if (payload.purchase_price) payload.purchase_price = parseFloat(payload.purchase_price);
+      else delete payload.purchase_price;
+      if (!payload.sub_category) delete payload.sub_category;
+      if (!payload.product_id) delete payload.product_id;
+      if (!payload.serial_number) delete payload.serial_number;
+      if (!payload.purchase_date) delete payload.purchase_date;
+      if (!payload.expiry_date) delete payload.expiry_date;
+      if (!payload.warranty_expiry) delete payload.warranty_expiry;
+      if (!payload.vendor) delete payload.vendor;
+      if (!payload.notes) delete payload.notes;
+      if (!payload.location_in_studio) delete payload.location_in_studio;
+      delete payload.min_stock;
+
+      await axios.post(`${API}/items`, payload);
       toast.success('Item added successfully');
       setAddItemDialog(false);
-      setNewItemForm({ name: '', category: '', total_quantity: 1, location_in_studio: '', min_stock: null });
+      setNewItemForm({ name: '', category: '', sub_category: '', total_quantity: 1, location_in_studio: '', min_stock: null, product_id: '', serial_number: '', purchase_date: '', expiry_date: '', warranty_expiry: '', vendor: '', purchase_price: '', notes: '' });
       fetchItems();
     } catch (error) {
       toast.error('Failed to add item');
@@ -499,36 +517,97 @@ export default function Inventory() {
 
       {/* Add Item Dialog */}
       <Dialog open={addItemDialog} onOpenChange={setAddItemDialog}>
-        <DialogContent className="bg-[#18181B] border-[#232328] text-white max-w-md" data-testid="add-item-dialog">
+        <DialogContent className="bg-[#18181B] border-[#232328] text-white max-w-lg max-h-[85vh] overflow-y-auto" data-testid="add-item-dialog">
           <DialogHeader>
             <DialogTitle className="font-heading text-xl font-bold">ADD NEW ITEM</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div>
-              <Label className="text-white text-sm mb-2 block">Item Name *</Label>
-              <Input data-testid="item-name-input" value={newItemForm.name} onChange={(e) => setNewItemForm({ ...newItemForm, name: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" />
+            {/* Required Fields */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <Label className="text-white text-sm mb-2 block">Item Name *</Label>
+                <Input data-testid="item-name-input" value={newItemForm.name} onChange={(e) => setNewItemForm({ ...newItemForm, name: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" />
+              </div>
+              <div>
+                <Label className="text-white text-sm mb-2 block">Category *</Label>
+                <Select value={newItemForm.category} onValueChange={(v) => setNewItemForm({ ...newItemForm, category: v })}>
+                  <SelectTrigger data-testid="item-category-input" className="bg-[#0F0F0F] border-[#232328] text-white h-11">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#18181B] border-[#232328]">
+                    {categories.map(([cat]) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-white text-sm mb-2 block">Sub-Category</Label>
+                <Input data-testid="item-subcategory-input" value={newItemForm.sub_category} onChange={(e) => setNewItemForm({ ...newItemForm, sub_category: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" placeholder="e.g. Lenses, Lights" />
+              </div>
+              <div>
+                <Label className="text-white text-sm mb-2 block">Total Quantity *</Label>
+                <Input type="number" data-testid="item-quantity-input" min="1" value={newItemForm.total_quantity} onChange={(e) => setNewItemForm({ ...newItemForm, total_quantity: parseInt(e.target.value) || 1 })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" />
+              </div>
+              <div>
+                <Label className="text-white text-sm mb-2 block">Location in Studio</Label>
+                <Input data-testid="item-location-input" value={newItemForm.location_in_studio} onChange={(e) => setNewItemForm({ ...newItemForm, location_in_studio: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" placeholder="e.g. Shelf A3" />
+              </div>
             </div>
-            <div>
-              <Label className="text-white text-sm mb-2 block">Category *</Label>
-              <Select value={newItemForm.category} onValueChange={(v) => setNewItemForm({ ...newItemForm, category: v })}>
-                <SelectTrigger data-testid="item-category-input" className="bg-[#0F0F0F] border-[#232328] text-white h-11">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#18181B] border-[#232328]">
-                  {categories.map(([cat]) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+
+            {/* Divider */}
+            <div className="flex items-center gap-2 pt-2">
+              <div className="h-px flex-1 bg-[#232328]" />
+              <span className="text-[10px] text-[#3F3F46] uppercase tracking-widest">Product Details</span>
+              <div className="h-px flex-1 bg-[#232328]" />
             </div>
-            <div>
-              <Label className="text-white text-sm mb-2 block">Total Quantity *</Label>
-              <Input type="number" data-testid="item-quantity-input" min="1" value={newItemForm.total_quantity} onChange={(e) => setNewItemForm({ ...newItemForm, total_quantity: parseInt(e.target.value) || 1 })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-white text-sm mb-2 block">Product ID / SKU</Label>
+                <Input data-testid="item-product-id-input" value={newItemForm.product_id} onChange={(e) => setNewItemForm({ ...newItemForm, product_id: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" placeholder="e.g. BMD-6KG2-001" />
+              </div>
+              <div>
+                <Label className="text-white text-sm mb-2 block">Serial Number</Label>
+                <Input data-testid="item-serial-input" value={newItemForm.serial_number} onChange={(e) => setNewItemForm({ ...newItemForm, serial_number: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" placeholder="e.g. SN-123456" />
+              </div>
+              <div>
+                <Label className="text-white text-sm mb-2 block">Vendor / Supplier</Label>
+                <Input data-testid="item-vendor-input" value={newItemForm.vendor} onChange={(e) => setNewItemForm({ ...newItemForm, vendor: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" placeholder="e.g. B&H Photo" />
+              </div>
+              <div>
+                <Label className="text-white text-sm mb-2 block">Purchase Price</Label>
+                <Input type="number" step="0.01" data-testid="item-price-input" value={newItemForm.purchase_price} onChange={(e) => setNewItemForm({ ...newItemForm, purchase_price: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" placeholder="0.00" />
+              </div>
             </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-2 pt-2">
+              <div className="h-px flex-1 bg-[#232328]" />
+              <span className="text-[10px] text-[#3F3F46] uppercase tracking-widest">Dates</span>
+              <div className="h-px flex-1 bg-[#232328]" />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label className="text-white text-sm mb-2 block">Purchase Date</Label>
+                <Input type="date" data-testid="item-purchase-date-input" value={newItemForm.purchase_date} onChange={(e) => setNewItemForm({ ...newItemForm, purchase_date: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" />
+              </div>
+              <div>
+                <Label className="text-white text-sm mb-2 block">Expiry Date</Label>
+                <Input type="date" data-testid="item-expiry-date-input" value={newItemForm.expiry_date} onChange={(e) => setNewItemForm({ ...newItemForm, expiry_date: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" />
+              </div>
+              <div>
+                <Label className="text-white text-sm mb-2 block">Warranty Expiry</Label>
+                <Input type="date" data-testid="item-warranty-input" value={newItemForm.warranty_expiry} onChange={(e) => setNewItemForm({ ...newItemForm, warranty_expiry: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" />
+              </div>
+            </div>
+
+            {/* Notes */}
             <div>
-              <Label className="text-white text-sm mb-2 block">Location in Studio</Label>
-              <Input data-testid="item-location-input" value={newItemForm.location_in_studio} onChange={(e) => setNewItemForm({ ...newItemForm, location_in_studio: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" />
+              <Label className="text-white text-sm mb-2 block">Notes</Label>
+              <Input data-testid="item-notes-input" value={newItemForm.notes} onChange={(e) => setNewItemForm({ ...newItemForm, notes: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" placeholder="Any additional notes..." />
             </div>
           </div>
           <DialogFooter>

@@ -1,45 +1,20 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Package, PackageOpen, AlertTriangle, Wrench, PackageX, FolderKanban, Clock, ArrowUpRight, CircleDot } from 'lucide-react';
+import { Package, PackageOpen, AlertTriangle, Wrench, PackageX, FolderKanban } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const typeColors = {
-  checkout: { bg: 'bg-orange-950/40', border: 'border-orange-900/50', dot: 'bg-[#F9982E]' },
-  issue: { bg: 'bg-red-950/40', border: 'border-red-900/50', dot: 'bg-[#EF4444]' },
-  lost_item: { bg: 'bg-rose-950/40', border: 'border-rose-900/50', dot: 'bg-[#F43F5E]' },
-  maintenance: { bg: 'bg-emerald-950/40', border: 'border-emerald-900/50', dot: 'bg-[#10B981]' },
-};
-
-function timeAgo(timestamp) {
-  if (!timestamp) return '';
-  const diff = Date.now() - new Date(timestamp).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(timestamp).toLocaleDateString();
-}
-
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
-  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    Promise.all([
-      axios.get(`${API}/dashboard/stats`).then(r => r.data),
-      axios.get(`${API}/dashboard/recent-activity`).then(r => r.data).catch(() => []),
-    ]).then(([statsData, activityData]) => {
-      setStats(statsData);
-      setActivities(activityData);
-    }).catch(err => console.error('Dashboard fetch failed:', err))
+    axios.get(`${API}/dashboard/stats`)
+      .then(r => setStats(r.data))
+      .catch(err => console.error('Dashboard fetch failed:', err))
       .finally(() => setLoading(false));
   }, []);
 
@@ -130,52 +105,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
-      {/* Recent Activity */}
-      <div data-testid="recent-activity-section">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Clock size={16} className="text-[#52525B]" />
-            <h2 className="font-heading text-lg font-bold text-white">RECENT ACTIVITY</h2>
-          </div>
-          <span className="text-[10px] text-[#3F3F46] uppercase tracking-wider">{activities.length} events</span>
-        </div>
-        {activities.length === 0 ? (
-          <div className="bg-[#18181B] border border-[#232328] rounded-lg p-8 text-center">
-            <p className="text-[#3F3F46] text-sm">No recent activity yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            {activities.map((act, i) => {
-              const colors = typeColors[act.type] || typeColors.checkout;
-              return (
-                <div
-                  key={i}
-                  data-testid={`activity-item-${i}`}
-                  className={`${colors.bg} border ${colors.border} rounded-lg px-4 py-3 flex items-center gap-3 transition-all hover:brightness-110`}
-                >
-                  <div className={`w-2 h-2 rounded-full ${colors.dot} shrink-0`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white text-sm font-medium truncate">{act.description}</div>
-                    <div className="text-[#52525B] text-xs truncate">{act.detail}</div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-[10px] font-data px-2 py-0.5 rounded ${
-                      act.status === 'Active' ? 'bg-[#F9982E]/20 text-[#F9982E]' :
-                      act.status === 'Open' ? 'bg-[#F59E0B]/20 text-[#F59E0B]' :
-                      act.status === 'Missing' ? 'bg-[#EF4444]/20 text-[#EF4444]' :
-                      'bg-[#232328] text-[#71717A]'
-                    }`}>
-                      {act.status}
-                    </span>
-                    <span className="text-[10px] text-[#3F3F46] font-data whitespace-nowrap">{timeAgo(act.timestamp)}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

@@ -35,7 +35,7 @@ const navGroups = [
   {
     label: 'Documentation',
     items: [
-      { path: '#', icon: FileText, label: 'Docs', disabled: true },
+      { path: '/documentation', icon: FileText, label: 'Documents' },
     ],
   },
 ];
@@ -157,15 +157,12 @@ export default function Layout() {
                   return (
                     <Link
                       key={item.path}
-                      to={item.disabled ? '#' : item.path}
-                      onClick={item.disabled ? (e) => { e.preventDefault(); toast.info('Documentation coming soon'); } : undefined}
+                      to={item.path}
                       data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
                       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
-                        item.disabled
-                          ? 'text-[#3F3F46] cursor-not-allowed'
-                          : isActive(item.path)
-                            ? 'bg-[#F9982E] text-black'
-                            : 'text-[#71717A] hover:text-white hover:bg-[#1C1C1F]'
+                        isActive(item.path)
+                          ? 'bg-[#F9982E] text-black'
+                          : 'text-[#71717A] hover:text-white hover:bg-[#1C1C1F]'
                       }`}
                     >
                       <Icon size={13} />

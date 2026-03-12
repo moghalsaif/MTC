@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -104,25 +104,48 @@ class Item(BaseModel):
     condition: str = "OK"
     min_stock: Optional[int] = None
     notes: Optional[str] = None
+    product_id: Optional[str] = None
+    serial_number: Optional[str] = None
+    purchase_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    warranty_expiry: Optional[str] = None
+    vendor: Optional[str] = None
+    purchase_price: Optional[float] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class ItemCreate(BaseModel):
     name: str
     category: str
+    sub_category: Optional[str] = None
     total_quantity: int
     location_in_studio: Optional[str] = None
     min_stock: Optional[int] = None
     notes: Optional[str] = None
+    product_id: Optional[str] = None
+    serial_number: Optional[str] = None
+    purchase_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    warranty_expiry: Optional[str] = None
+    vendor: Optional[str] = None
+    purchase_price: Optional[float] = None
 
 class ItemUpdate(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
+    sub_category: Optional[str] = None
     total_quantity: Optional[int] = None
     location_in_studio: Optional[str] = None
     status: Optional[str] = None
     condition: Optional[str] = None
     min_stock: Optional[int] = None
     notes: Optional[str] = None
+    product_id: Optional[str] = None
+    serial_number: Optional[str] = None
+    purchase_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    warranty_expiry: Optional[str] = None
+    vendor: Optional[str] = None
+    purchase_price: Optional[float] = None
 
 class Project(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -1630,6 +1653,74 @@ async def get_recent_activity(current_user: dict = Depends(get_current_user), li
     # Sort all by timestamp descending
     activities.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
     return activities[:limit]
+
+
+# ==================== DOCUMENTATION ====================
+
+class Document(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    file_name: str
+    file_size: int
+    file_type: str
+    category: str = "General"
+    description: Optional[str] = None
+    uploaded_by: Optional[str] = None
+    file_data: Optional[str] = None  # base64 encoded
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+@api_router.get("/documents")
+async def get_documents(current_user: dict = Depends(get_current_user), category: Optional[str] = None):
+    query = {}
+    if category and category != "all":
+        query["category"] = category
+    docs = await db.documents.find(query, {"_id": 0, "file_data": 0}).sort("created_at", -1).to_list(500)
+    return docs
+
+@api_router.post("/documents")
+async def upload_document(current_user: dict = Depends(get_current_user), file: UploadFile = File(...), name: str = Form(...), category: str = Form("General"), description: str = Form("")):
+    contents = await file.read()
+    if len(contents) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Max 25MB.")
+    
+    import base64
+    encoded = base64.b64encode(contents).decode('utf-8')
+    
+    doc = Document(
+        name=name,
+        file_name=file.filename,
+        file_size=len(contents),
+        file_type=file.content_type or "application/octet-stream",
+        category=category,
+        description=description,
+        uploaded_by=current_user.get("name", current_user.get("email")),
+        file_data=encoded
+    )
+    await db.documents.insert_one(doc.model_dump())
+    return {"id": doc.id, "name": doc.name, "file_name": doc.file_name, "file_size": doc.file_size, "file_type": doc.file_type, "category": doc.category, "description": doc.description, "uploaded_by": doc.uploaded_by, "created_at": doc.created_at}
+
+@api_router.get("/documents/{doc_id}/download")
+async def download_document(doc_id: str, current_user: dict = Depends(get_current_user)):
+    doc = await db.documents.find_one({"id": doc_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    import base64
+    file_bytes = base64.b64decode(doc["file_data"])
+    
+    return StreamingResponse(
+        BytesIO(file_bytes),
+        media_type=doc["file_type"],
+        headers={"Content-Disposition": f'attachment; filename="{doc["file_name"]}"'}
+    )
+
+@api_router.delete("/documents/{doc_id}")
+async def delete_document(doc_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.documents.delete_one({"id": doc_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"message": "Document deleted"}
+
 
 app.include_router(api_router)
 
