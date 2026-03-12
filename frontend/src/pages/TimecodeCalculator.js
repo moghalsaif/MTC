@@ -34,7 +34,8 @@ function timecodeToFrames(hh, mm, ss, ff, fps) {
     const dropPerMin = fps === 29.97 ? 2 : 4;
     const framesPerHour = nominalFps * 3600;
     const framesPerMin = nominalFps * 60;
-    const dropped = dropPerMin * (m - Math.floor(m / 10));
+    const totalMinutes = h * 60 + m;
+    const dropped = dropPerMin * (totalMinutes - Math.floor(totalMinutes / 10));
     return framesPerHour * h + framesPerMin * m + nominalFps * s + f - dropped;
   }
 

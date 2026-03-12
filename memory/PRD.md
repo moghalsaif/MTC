@@ -29,7 +29,7 @@ Equipment tracker dashboard for Mach Visuals, a virtual production company. The 
 /app/backend/server.py     — Single-file FastAPI (all routes, models)
 /app/frontend/src/
   App.js                   — Router
-  components/Layout.js     — Navigation (grouped sections)
+  components/Layout.js     — Navigation (grouped sections with dropdowns)
   pages/Dashboard.js       — Stats + activity feed
   pages/Inventory.js       — Equipment list with filters
   pages/ItemsOut.js        — Active checkouts
@@ -39,9 +39,11 @@ Equipment tracker dashboard for Mach Visuals, a virtual production company. The 
   pages/LostItems.js       — Missing equipment
   pages/Maintenance.js     — Maintenance records
   pages/Login.js           — Auth (login/register)
+  pages/Documentation.js   — Document management with custom categories
+  pages/TimecodeCalculator.js — SMPTE timecode calculator tool
 ```
 
-## What's Been Implemented (Feb 2026)
+## What's Been Implemented (Feb-Mar 2026)
 - [x] Full equipment CRUD with 90 items from MASTER FINALS.xlsx
 - [x] 12 categories: Camera & Optics, Lighting, Audio, Video & Capture, Computing, Displays, Storage & Media, Networking, Power & Cables, Hardware & Tools, Tracking, Chroma Mat
 - [x] Sub-categories in data model
@@ -56,40 +58,30 @@ Equipment tracker dashboard for Mach Visuals, a virtual production company. The 
 - [x] Lost items tracking
 - [x] Maintenance scheduling
 - [x] Licence & asset management
-- [x] Dashboard with 7 stat cards (clean, no activity clutter)
-- [x] Documentation module: upload/download/delete with **user-created custom categories**
-- [x] Dropdown navigation menus (Mach Traffic Controller dropdown, single links for Licences & Documents)
-- [x] Edit existing inventory items (quantity, status, condition, all fields) via pencil icon
-- [x] Location field is city-based (not studio location)
+- [x] Dashboard with 7 stat cards
+- [x] Documentation module: upload/download/delete with user-created custom categories
+- [x] Dropdown navigation menus
+- [x] Edit existing inventory items
 - [x] Font size 10% larger globally
 - [x] Dark gradient background with orange accent
 - [x] @machvisuals.com email domain restriction
 - [x] PDF packing list with Paragraph wrapping for long item names
-- [x] Wrap-up center with verification logic
-- [x] Dead code cleanup (~700 lines removed: shoot logs, employees, tasks, command center)
+- [x] **Timecode Calculator** — SMPTE timecode add/subtract with 9 frame rates (16, 23.976, 24, 25, 29.97 DF, 30, 50, 59.94 DF, 60), drop-frame support, copy-to-clipboard, under "Tools at mach" nav group
 
 ## Navigation Structure
 1. **Mach Traffic Controller**: Dashboard, Inventory, Items Out, Projects, Issues, Lost Items, Maintenance
 2. **Licences & Assets**: Licences & Assets page
-3. **Documentation**: Coming soon (placeholder)
+3. **Documentation**: Documents page
+4. **Tools at mach**: Timecode Calculator
 
 ## Key API Endpoints
 - `POST /api/auth/register` — @machvisuals.com only
 - `POST /api/auth/login`
 - `GET /api/items` — 90 items with sub_category
 - `GET /api/dashboard/stats` — Overview stats
-- `GET /api/dashboard/recent-activity` — Activity feed for dashboard
 - `POST /api/checkouts/mark-out` / `quick-mark-in` / `transfer`
 - `GET /api/projects`, `GET /api/licences`, `GET /api/issues`, etc.
 
-## Removed Features
-- Command Center (deleted)
-- Shoot Log / Master Log Sheet (deleted)
-- Employee management (deleted)
-- Task management (deleted)
-- Time tracking (deleted)
-- 3D globe / cube backgrounds (deleted)
-
 ## Test Credentials
-- Email: agent@machvisuals.com
-- Password: password123
+- Email: testcalc@machvisuals.com / Test1234!
+- Email: agent@machvisuals.com / password123
