@@ -1,0 +1,100 @@
+{
+  "summary": "Timecode Calculator frontend testing completed. Core functionality works correctly for non-drop-frame rates (24fps ADD/SUB, negative results). Found CRITICAL bug in drop-frame timecode calculation - affects 29.97 DF and 59.94 DF frame rates.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "calculation_bugs": [
+      {
+        "component": "TimecodeCalculator.js timecodeToFrames()",
+        "issue": "Drop-frame calculation is incorrect. At 29.97 DF, 01:00:00:00 shows 108,000 frames instead of expected 107,892 frames. The bug is in line 37: dropped frames calculation only uses minute value (m) from timecode, not total minutes including hours.",
+        "priority": "HIGH",
+        "expected": "01:00:00:00 at 29.97 DF = 107,892 frames",
+        "actual": "01:00:00:00 at 29.97 DF = 108,000 frames",
+        "fix_required": "Change line 37 from 'const dropped = dropPerMin * (m - Math.floor(m / 10))' to account for total minutes including hours: const totalMinutes = h * 60 + m; const dropped = dropPerMin * (totalMinutes - Math.floor(totalMinutes / 10));"
+      }
+    ]
+  },
+  
+  "passed_tests": [
+    "Navigation: 'Timecode Calculator' link visible in header navbar",
+    "Navigation: Clicking link routes to /timecode-calculator page",
+    "Frame Rate Selector: All 9 frame rates present (16, 23.976, 24, 25, 29.97 DF, 30, 50, 59.94 DF, 60)",
+    "Frame Rate Selector: Clicking selects and highlights button in orange",
+    "Timecode inputs: TC1 and TC2 have HH, MM, SS, FF fields with proper data-testid",
+    "Input validation: HH clamped to max 23",
+    "Input validation: MM clamped to max 59",
+    "Input validation: SS clamped to max 59",
+    "Input validation: FF max depends on frame rate (23 at 24fps, 29 at 29.97 DF, 59 at 59.94 DF, 59 at 60fps)",
+    "Operation toggle: ADD button has green (emerald) styling",
+    "Operation toggle: SUB button has red styling when selected",
+    "Calculate button: Color changes to green for ADD, red for SUB",
+    "Calculate button: Label changes to 'ADD TIMECODES' or 'SUBTRACT TIMECODES'",
+    "ADD Calculation (24fps): 01:00:00:00 + 00:30:00:00 = 01:30:00:00, frames=129,600, seconds=5400.000 CORRECT",
+    "SUB Calculation (24fps): 01:00:00:00 - 00:30:00:00 = 00:30:00:00, frames=43,200, seconds=1800.000 CORRECT",
+    "Negative Result: 00:10:00:00 - 00:30:00:00 = -00:20:00:00 with minus sign in red CORRECT",
+    "Result section: Shows TIMECODE, TOTAL FRAMES, SECONDS",
+    "Copy buttons: Copy Timecode, Copy Frames, Copy Seconds buttons exist",
+    "Reset button: Clears all inputs back to 0",
+    "Frame rate change: Clears result section",
+    "Frame rate change: FF values properly clamped (55 at 60fps -> 23 at 24fps)",
+    "Drop-frame indicator: Shows 'Drop-frame' text in result section for 29.97 DF"
+  ],
+  
+  "failed_tests": [
+    "Drop-frame calculation at 29.97 DF: 01:00:00:00 should = 107,892 frames but shows 108,000",
+    "Reference calculation at 23.976fps: 01:25:12:23 + 00:21:05:02 shows 153,073 frames vs expected 153,625 (may be due to different rounding)"
+  ],
+  
+  "test_report_links": [
+    "/app/test_reports/iteration_12.json"
+  ],
+  
+  "action_items": [
+    "FIX CRITICAL: Drop-frame calculation bug in TimecodeCalculator.js timecodeToFrames() - must account for total minutes (h*60+m) not just minute value (m) when calculating dropped frames",
+    "VERIFY: After fix, 01:00:00:00 at 29.97 DF should equal 107,892 frames",
+    "VERIFY: After fix, framesToTimecode should also be checked for consistency"
+  ],
+  
+  "critical_code_review_comments": [
+    "Line 37 in timecodeToFrames(): Bug - dropped frames only uses 'm' (minutes from timecode) instead of total minutes. For 01:00:00:00, m=0 so dropped=0, but should account for 60 minutes worth of dropped frames from the hour.",
+    "Standard SMPTE drop-frame formula requires totalMinutes = h*60+m, then dropped = 2*(totalMinutes - floor(totalMinutes/10))"
+  ],
+  
+  "updated_files": [],
+  
+  "success_rate": {
+    "frontend": "92% (23/25 tests passed - 2 drop-frame calculation failures)"
+  },
+  
+  "test_credentials": {
+    "email": "testcalc@machvisuals.com",
+    "password": "Test1234!"
+  },
+  
+  "seed_data_creation": "None required - calculator is purely client-side",
+  
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  
+  "context_for_next_testing_agent": "Timecode Calculator frontend mostly working. Core ADD/SUB calculations at non-drop-frame rates (24fps) are correct. The critical bug is in drop-frame calculation where the timecodeToFrames() function doesn't account for dropped frames across hours. Fix required in line 37 of TimecodeCalculator.js. All UI elements, navigation, input validation, and visual styling verified working.",
+  
+  "rca_of_the_issue": {
+    "bug": "Drop-frame frame count incorrect",
+    "root_cause": "In timecodeToFrames() function, the dropped frames calculation uses only the minute value from the timecode (m) rather than total minutes including hours. For timecode 01:00:00:00, m=0, so no frames are dropped, but the entire first hour should have 108 dropped frames.",
+    "reproduction_steps": [
+      "1. Navigate to /timecode-calculator",
+      "2. Select 29.97 DF frame rate",
+      "3. Enter TC1: 01:00:00:00, TC2: 00:00:00:00",
+      "4. Click ADD TIMECODES",
+      "5. Observe result shows 108,000 frames instead of 107,892"
+    ],
+    "mitigation": "Change line 37 from: const dropped = dropPerMin * (m - Math.floor(m / 10)); to: const totalMinutes = h * 60 + m; const dropped = dropPerMin * (totalMinutes - Math.floor(totalMinutes / 10));"
+  }
+}
