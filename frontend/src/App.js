@@ -5,7 +5,6 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Toaster } from './components/ui/sonner';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import CommandCenter from './pages/CommandCenter';
 import Inventory from './pages/Inventory';
 import ItemsOut from './pages/ItemsOut';
 import Projects from './pages/Projects';
@@ -20,7 +19,7 @@ const PrivateRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#1B1B1B] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0F0F0F] flex items-center justify-center">
         <div className="text-white font-data">LOADING...</div>
       </div>
     );
@@ -33,15 +32,6 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      {/* Command Center - Full screen without layout */}
-      <Route
-        path="/command"
-        element={
-          <PrivateRoute>
-            <CommandCenter />
-          </PrivateRoute>
-        }
-      />
       <Route
         path="/"
         element={

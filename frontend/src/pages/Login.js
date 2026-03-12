@@ -34,9 +34,9 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1B1B1B] noise-bg flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#0F0F0F] flex items-center justify-center px-4" style={{background: 'radial-gradient(ellipse at 50% 0%, rgba(249,152,46,0.06) 0%, transparent 60%), #0F0F0F'}}>
       <div className="w-full max-w-md">
-        <div className="bg-[#27272A] border border-[#3F3F46] rounded-3xl p-8 shadow-2xl">
+        <div className="bg-[#18181B] border border-[#232328] rounded-2xl p-8 shadow-2xl">
           <h1 className="font-heading text-4xl font-black text-white tracking-tight mb-1" data-testid="login-title">
             MACH TRAFFIC CONTROLLER
           </h1>
@@ -56,7 +56,7 @@ export default function Login() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required={!isLogin}
-                  className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12 rounded-xl"
+                  className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11 rounded-lg"
                 />
               </div>
             )}
@@ -72,7 +72,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder={!isLogin ? "yourname@machvisuals.com" : ""}
-                className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12 rounded-xl"
+                className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11 rounded-lg"
               />
             </div>
             <div>
@@ -86,14 +86,14 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-[#1B1B1B] border-[#3F3F46] focus:border-[#F9982E] text-white h-12 rounded-xl"
+                className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11 rounded-lg"
               />
             </div>
             <Button
               type="submit"
               data-testid="submit-button"
               disabled={loading}
-              className="w-full bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-xl h-12 shadow-lg"
+              className="w-full bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-lg h-11 shadow-lg"
             >
               {loading ? 'PROCESSING...' : isLogin ? 'LOGIN' : 'CREATE ACCOUNT'}
             </Button>

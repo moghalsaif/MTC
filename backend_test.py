@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timezone, timedelta
 
 class EquipmentTrackerAPITester:
-    def __init__(self, base_url="https://geargrid.preview.emergentagent.com"):
+    def __init__(self, base_url="https://mach-traffic-control.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None

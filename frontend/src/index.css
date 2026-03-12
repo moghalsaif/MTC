@@ -17,11 +17,11 @@ code {
 
 @layer base {
     :root {
-        --background: 27 27 27;
+        --background: 15 15 15;
         --foreground: 255 255 255;
-        --card: 39 39 42;
+        --card: 24 24 27;
         --card-foreground: 255 255 255;
-        --popover: 39 39 42;
+        --popover: 24 24 27;
         --popover-foreground: 255 255 255;
         --primary: 249 152 46;
         --primary-foreground: 0 0 0;
@@ -33,31 +33,10 @@ code {
         --accent-foreground: 0 0 0;
         --destructive: 239 68 68;
         --destructive-foreground: 255 255 255;
-        --border: 63 63 70;
-        --input: 63 63 70;
+        --border: 50 50 56;
+        --input: 50 50 56;
         --ring: 249 152 46;
-        --radius: 1rem;
-    }
-    :root {
-        --background: 27 27 27;
-        --foreground: 255 255 255;
-        --card: 39 39 42;
-        --card-foreground: 255 255 255;
-        --popover: 39 39 42;
-        --popover-foreground: 255 255 255;
-        --primary: 249 152 46;
-        --primary-foreground: 0 0 0;
-        --secondary: 255 255 255;
-        --secondary-foreground: 0 0 0;
-        --muted: 113 113 122;
-        --muted-foreground: 161 161 170;
-        --accent: 249 152 46;
-        --accent-foreground: 0 0 0;
-        --destructive: 239 68 68;
-        --destructive-foreground: 255 255 255;
-        --border: 63 63 70;
-        --input: 63 63 70;
-        --ring: 249 152 46;
+        --radius: 0.75rem;
     }
 }
 
@@ -66,7 +45,7 @@ code {
         @apply border-border;
     }
     body {
-        @apply bg-[#1B1B1B] text-foreground;
+        @apply bg-[#0F0F0F] text-foreground;
     }
 }
 
@@ -85,60 +64,25 @@ code {
     font-family: 'JetBrains Mono', monospace;
 }
 
-.noise-bg {
-    position: relative;
+/* Mach gradient background */
+.mach-gradient-bg {
+    background: 
+        radial-gradient(ellipse at 0% 0%, rgba(249, 152, 46, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 100% 100%, rgba(30, 30, 30, 0.9) 0%, transparent 60%),
+        linear-gradient(165deg, #0F0F0F 0%, #141414 40%, #0F0F0F 100%);
 }
 
+/* Subtle grain texture */
 .noise-bg::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 1;
-}
-
-/* Speed trails texture for racing feel */
-.speed-trails {
-    position: relative;
-    overflow: hidden;
-}
-
-.speed-trails::after {
     content: '';
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: 
-        linear-gradient(90deg, transparent 0%, transparent 98%, rgba(249,152,46,0.03) 98%, rgba(249,152,46,0.03) 100%),
-        linear-gradient(90deg, transparent 0%, transparent 94%, rgba(139,92,246,0.02) 94%, rgba(139,92,246,0.02) 100%),
-        linear-gradient(90deg, transparent 0%, transparent 89%, rgba(255,255,255,0.02) 89%, rgba(255,255,255,0.02) 100%),
-        linear-gradient(90deg, transparent 0%, transparent 96%, rgba(249,152,46,0.02) 96%, rgba(249,152,46,0.02) 100%),
-        linear-gradient(90deg, transparent 0%, transparent 92%, rgba(161,161,170,0.015) 92%, rgba(161,161,170,0.015) 100%);
-    background-size: 
-        200px 100%,
-        150px 100%,
-        100px 100%,
-        80px 100%,
-        120px 100%;
-    animation: speedTrails 20s linear infinite;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
     pointer-events: none;
     z-index: 0;
-    opacity: 0.8;
-}
-
-@keyframes speedTrails {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(-200px);
-    }
 }
 
 @layer base {
