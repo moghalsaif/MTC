@@ -75,8 +75,13 @@ export const AuthProvider = ({ children }) => {
     delete axios.defaults.headers.common['Authorization'];
   };
 
+  const canManageInventory = user?.role === 'admin' || user?.role === 'manager';
+  const canDeleteInventory = user?.role === 'admin';
+  const canResolveIssues = user?.role === 'admin' || user?.role === 'manager';
+  const canDeleteLicences = user?.role === 'admin' || user?.role === 'manager';
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, canManageInventory, canDeleteInventory, canResolveIssues, canDeleteLicences }}>
       {children}
     </AuthContext.Provider>
   );

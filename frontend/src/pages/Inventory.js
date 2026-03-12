@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -24,6 +25,7 @@ const categoryColors = {
 };
 
 export default function Inventory() {
+  const { canManageInventory } = useAuth();
   const [items, setItems] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -155,7 +157,7 @@ export default function Inventory() {
       <td className="py-3 px-3 text-center w-24"><span className={`font-data text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border ${badge(item.status)}`}>{item.status}</span></td>
       <td className="py-3 px-4 text-right w-28">
         <div className="flex items-center justify-end gap-1">
-          <button onClick={() => openEdit(item)} data-testid={`edit-${item.id}`} className="p-1.5 rounded hover:bg-[#232328] text-[#52525B] hover:text-white transition-colors" title="Edit"><Pencil size={13} /></button>
+          {canManageInventory && <button onClick={() => openEdit(item)} data-testid={`edit-${item.id}`} className="p-1.5 rounded hover:bg-[#232328] text-[#52525B] hover:text-white transition-colors" title="Edit"><Pencil size={13} /></button>}
           <button onClick={() => openMarkOut(item)} data-testid={`mark-out-${item.id}`} disabled={item.quantity_available === 0 || item.status !== 'Available'}
             className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${item.quantity_out > 0 ? 'bg-emerald-600/80 hover:bg-emerald-600 text-white' : 'bg-[#F9982E] hover:bg-[#F9982E]/90 text-black'}`}>
             {item.quantity_out > 0 ? 'Add' : 'Out'}
@@ -172,9 +174,9 @@ export default function Inventory() {
           <h1 className="font-heading text-4xl sm:text-5xl font-black text-white tracking-tight" data-testid="inventory-title">INVENTORY</h1>
           <p className="text-[#52525B] mt-1 text-sm">{filteredItems.length} of {items.length} items</p>
         </div>
-        <Button onClick={() => setAddItemDialog(true)} data-testid="add-item-button" className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-lg text-xs">
+        {canManageInventory && <Button onClick={() => setAddItemDialog(true)} data-testid="add-item-button" className="bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-lg text-xs">
           <Plus size={16} className="mr-1.5" />Add Item
-        </Button>
+        </Button>}
       </div>
 
       <div className="flex gap-5">

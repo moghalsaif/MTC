@@ -217,7 +217,12 @@ export default function Layout() {
                 <span>Transfer</span>
               </button>
               <div className="h-4 w-px bg-[#232328]" />
-              <span className="text-xs text-[#52525B] font-data" data-testid="user-name">{user?.name}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-[#52525B] font-data" data-testid="user-name">{user?.name}</span>
+                {user?.role && <span data-testid="user-role-badge" className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                  user.role === 'admin' ? 'bg-[#F9982E]/15 text-[#F9982E]' : user.role === 'manager' ? 'bg-[#8B5CF6]/15 text-[#8B5CF6]' : 'bg-[#232328] text-[#52525B]'
+                }`}>{user.role}</span>}
+              </div>
               <button
                 onClick={logout}
                 data-testid="logout-button"

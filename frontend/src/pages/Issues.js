@@ -7,6 +7,7 @@ import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -14,6 +15,7 @@ const API = `${BACKEND_URL}/api`;
 const ISSUE_TYPES = ['Damage', 'Malfunction', 'Missing Part', 'Calibration', 'Other'];
 
 export default function Issues() {
+  const { canResolveIssues } = useAuth();
   const [issues, setIssues] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -188,9 +190,9 @@ export default function Issues() {
                     {issue.status !== 'Resolved' && (
                       <div className="flex gap-2">
                         <Button onClick={() => openEditIssue(issue)} data-testid={`edit-issue-${issue.id}`} className="bg-transparent border border-[#232328] text-[#A1A1AA] hover:text-white hover:bg-[#1C1C1F] rounded-lg text-xs font-bold">Edit Details</Button>
-                        <Button onClick={() => resolveIssue(issue)} data-testid={`resolve-issue-${issue.id}`} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold">
+                        {canResolveIssues && <Button onClick={() => resolveIssue(issue)} data-testid={`resolve-issue-${issue.id}`} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold">
                           <CheckCircle size={14} className="mr-1" />Resolve
-                        </Button>
+                        </Button>}
                       </div>
                     )}
                   </div>

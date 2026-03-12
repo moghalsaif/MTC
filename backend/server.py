@@ -84,6 +84,7 @@ class UserResponse(BaseModel):
     id: str
     email: str
     name: str
+    role: str = "user"
     created_at: str
 
 class TokenResponse(BaseModel):
@@ -437,6 +438,21 @@ class ReservationCreate(BaseModel):
 # Auth Routes
 ALLOWED_EMAIL_DOMAIN = "@machvisuals.com"
 
+ROLE_MAP = {
+    "sanat@machvisuals.com": "admin",
+    "rohit@machvisuals.com": "manager",
+}
+
+def get_role_for_email(email: str) -> str:
+    return ROLE_MAP.get(email.lower(), "user")
+
+def require_role(*allowed_roles):
+    async def checker(current_user: dict = Depends(get_current_user)):
+        if current_user.get("role", "user") not in allowed_roles:
+            raise HTTPException(status_code=403, detail="You don't have permission to perform this action")
+        return current_user
+    return checker
+
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user_data: UserRegister):
     # Validate email domain - only @machvisuals.com allowed
@@ -450,11 +466,13 @@ async def register(user_data: UserRegister):
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
+    role = get_role_for_email(user_data.email)
     user_dict = {
         "id": str(uuid.uuid4()),
         "email": user_data.email,
         "password": hash_password(user_data.password),
         "name": user_data.name,
+        "role": role,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
@@ -465,6 +483,7 @@ async def register(user_data: UserRegister):
         id=user_dict["id"],
         email=user_dict["email"],
         name=user_dict["name"],
+        role=user_dict["role"],
         created_at=user_dict["created_at"]
     )
     
@@ -476,11 +495,15 @@ async def login(credentials: UserLogin):
     if not user or not verify_password(credentials.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
+    if "role" not in user:
+        user["role"] = get_role_for_email(user["email"])
+        await db.users.update_one({"email": user["email"]}, {"$set": {"role": user["role"]}})
     token = create_access_token(data={"sub": credentials.email})
     user_response = UserResponse(
         id=user["id"],
         email=user["email"],
         name=user["name"],
+        role=user.get("role", "user"),
         created_at=user["created_at"]
     )
     
@@ -488,6 +511,10 @@ async def login(credentials: UserLogin):
 
 @api_router.get("/auth/me", response_model=UserResponse)
 async def get_me(current_user: dict = Depends(get_current_user)):
+    if "role" not in current_user:
+        role = get_role_for_email(current_user["email"])
+        await db.users.update_one({"email": current_user["email"]}, {"$set": {"role": role}})
+        current_user["role"] = role
     return UserResponse(**current_user)
 
 # Item Routes
@@ -497,7 +524,7 @@ async def get_items(current_user: dict = Depends(get_current_user)):
     return items
 
 @api_router.post("/items", response_model=Item)
-async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_current_user)):
+async def create_item(item_data: ItemCreate, current_user: dict = Depends(require_role("admin", "manager"))):
     item_dict = item_data.model_dump()
     item = Item(
         **item_dict,
@@ -515,7 +542,7 @@ async def get_item(item_id: str, current_user: dict = Depends(get_current_user))
     return item
 
 @api_router.patch("/items/{item_id}", response_model=Item)
-async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = Depends(get_current_user)):
+async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = Depends(require_role("admin", "manager"))):
     update_data = {k: v for k, v in item_data.model_dump().items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -527,7 +554,7 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
     return updated_item
 
 @api_router.put("/items/{item_id}", response_model=Item)
-async def update_item_put(item_id: str, item_data: ItemUpdate, current_user: dict = Depends(get_current_user)):
+async def update_item_put(item_id: str, item_data: ItemUpdate, current_user: dict = Depends(require_role("admin", "manager"))):
     """PUT endpoint for updating items (used by frontend)"""
     existing = await db.items.find_one({"id": item_id}, {"_id": 0})
     if not existing:
@@ -568,7 +595,7 @@ async def update_item_put(item_id: str, item_data: ItemUpdate, current_user: dic
     return updated_item
 
 @api_router.delete("/items/{item_id}")
-async def delete_item(item_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_item(item_id: str, current_user: dict = Depends(require_role("admin"))):
     result = await db.items.delete_one({"id": item_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -1015,7 +1042,11 @@ async def update_issue(issue_id: str, current_user: dict = Depends(get_current_u
     if status:
         update_data["status"] = status
     
+    # Only admin and manager can resolve issues
     if update_data.get("status") == "Resolved":
+        user_role = current_user.get("role", "user")
+        if user_role not in ("admin", "manager"):
+            raise HTTPException(status_code=403, detail="You don't have permission to resolve issues")
         update_data["resolved_at"] = datetime.now(timezone.utc).isoformat()
         # Cross-link: restore item condition to OK
         await db.items.update_one(
@@ -1555,7 +1586,7 @@ async def update_licence(licence_id: str, licence_data: LicenceUpdate, current_u
     return updated
 
 @api_router.delete("/licences/{licence_id}")
-async def delete_licence(licence_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_licence(licence_id: str, current_user: dict = Depends(require_role("admin", "manager"))):
     result = await db.licences.delete_one({"id": licence_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Licence not found")
@@ -1678,7 +1709,7 @@ async def update_asset(asset_id: str, asset_data: AssetUpdate, current_user: dic
     return updated
 
 @api_router.delete("/assets/{asset_id}")
-async def delete_asset(asset_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_asset(asset_id: str, current_user: dict = Depends(require_role("admin", "manager"))):
     result = await db.assets.delete_one({"id": asset_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Asset not found")

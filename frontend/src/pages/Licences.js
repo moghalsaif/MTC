@@ -9,11 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 export default function Licences() {
+  const { canDeleteLicences } = useAuth();
   const [licences, setLicences] = useState([]);
   const [assets, setAssets] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -471,9 +473,9 @@ export default function Licences() {
                           <button onClick={() => openEditLicence(licence)} className="p-1.5 text-[#8B5CF6] hover:bg-[#8B5CF6]/10 rounded-lg">
                             <Pencil size={14} />
                           </button>
-                          <button onClick={() => handleDeleteLicence(licence.id)} className="p-1.5 text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg">
+                          {canDeleteLicences && <button onClick={() => handleDeleteLicence(licence.id)} className="p-1.5 text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg">
                             <Trash2 size={14} />
-                          </button>
+                          </button>}
                         </div>
                       </td>
                     </tr>
@@ -551,9 +553,9 @@ export default function Licences() {
                           <button onClick={() => openEditAsset(asset)} className="p-1.5 text-[#8B5CF6] hover:bg-[#8B5CF6]/10 rounded-lg">
                             <Pencil size={14} />
                           </button>
-                          <button onClick={() => handleDeleteAsset(asset.id)} className="p-1.5 text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg">
+                          {canDeleteLicences && <button onClick={() => handleDeleteAsset(asset.id)} className="p-1.5 text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg">
                             <Trash2 size={14} />
-                          </button>
+                          </button>}
                         </div>
                       </td>
                     </tr>
