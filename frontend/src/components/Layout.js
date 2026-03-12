@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, Package, PackageOpen, FolderKanban, AlertTriangle, PackageX, Wrench, LogOut, ArrowRightLeft, CreditCard, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { LayoutDashboard, Package, PackageOpen, FolderKanban, AlertTriangle, PackageX, Wrench, LogOut, ArrowRightLeft, CreditCard, FileText, ChevronDown } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { Button } from './ui/button';
@@ -40,9 +40,81 @@ const navGroups = [
   },
 ];
 
+function NavDropdown({ group }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const location = useLocation();
+
+  const isGroupActive = group.items.some(item => {
+    if (item.path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(item.path);
+  });
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // If single item, render directly
+  if (group.items.length === 1) {
+    const item = group.items[0];
+    const Icon = item.icon;
+    const active = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+    return (
+      <Link
+        to={item.path}
+        data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-[13px] font-medium transition-all whitespace-nowrap ${
+          active ? 'bg-[#F9982E] text-black' : 'text-[#71717A] hover:text-white hover:bg-[#1C1C1F]'
+        }`}
+      >
+        <Icon size={14} />
+        <span>{item.label}</span>
+      </Link>
+    );
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        data-testid={`nav-group-${group.label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-[13px] font-medium transition-all whitespace-nowrap ${
+          isGroupActive ? 'bg-[#F9982E]/15 text-[#F9982E]' : 'text-[#71717A] hover:text-white hover:bg-[#1C1C1F]'
+        }`}
+      >
+        <span>{group.label}</span>
+        <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 bg-[#18181B] border border-[#232328] rounded-lg shadow-xl py-1 min-w-[180px] z-50">
+          {group.items.map(item => {
+            const Icon = item.icon;
+            const active = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setOpen(false)}
+                data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                className={`flex items-center gap-2 px-3 py-2 text-[13px] font-medium transition-all ${
+                  active ? 'bg-[#F9982E]/10 text-[#F9982E]' : 'text-[#A1A1AA] hover:text-white hover:bg-[#1C1C1F]'
+                }`}
+              >
+                <Icon size={14} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Layout() {
   const { user, logout } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
 
   const [transferDialog, setTransferDialog] = useState(false);
@@ -54,11 +126,6 @@ export default function Layout() {
   const [transferType, setTransferType] = useState('full');
   const [transferQuantity, setTransferQuantity] = useState(1);
   const [loadingData, setLoadingData] = useState(false);
-
-  const isActive = (path) => {
-    if (path === '/') return location.pathname === '/';
-    return location.pathname.startsWith(path);
-  };
 
   const openTransferDialog = async () => {
     setLoadingData(true);
@@ -118,11 +185,20 @@ export default function Layout() {
     <div className="min-h-screen mach-gradient-bg noise-bg">
       <nav className="border-b border-[#232328] bg-[#0F0F0F]/90 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-[1920px] mx-auto px-6">
-          {/* Top row - Logo and Actions */}
-          <div className="flex items-center justify-between py-3 border-b border-[#232328]">
-            <h1 className="font-heading text-lg font-black text-white tracking-tight" data-testid="app-title">
-              MACH TRAFFIC CONTROLLER
-            </h1>
+          <div className="flex items-center justify-between h-14">
+            {/* Left: Logo + Nav */}
+            <div className="flex items-center gap-1">
+              <h1 className="font-heading text-base font-black text-white tracking-tight mr-4" data-testid="app-title">
+                MACH
+              </h1>
+              {navGroups.map((group, gi) => (
+                <div key={group.label} className="flex items-center">
+                  {gi > 0 && <div className="h-5 w-px bg-[#232328] mx-1" />}
+                  <NavDropdown group={group} />
+                </div>
+              ))}
+            </div>
+            {/* Right: Actions */}
             <div className="flex items-center gap-3">
               <button
                 onClick={openTransferDialog}
@@ -135,43 +211,16 @@ export default function Layout() {
                 <span>Transfer</span>
               </button>
               <div className="h-4 w-px bg-[#232328]" />
-              <span className="text-xs text-[#71717A] font-data" data-testid="user-name">{user?.name}</span>
+              <span className="text-xs text-[#52525B] font-data" data-testid="user-name">{user?.name}</span>
               <button
                 onClick={logout}
                 data-testid="logout-button"
-                className="px-3 py-1.5 rounded-lg text-[#71717A] hover:text-white hover:bg-[#EF4444]/80 transition-all text-xs font-medium"
+                className="p-1.5 rounded-lg text-[#52525B] hover:text-white hover:bg-[#EF4444]/80 transition-all"
                 title="Logout"
               >
                 <LogOut size={14} />
               </button>
             </div>
-          </div>
-          {/* Bottom row - Grouped Navigation */}
-          <div className="flex items-center gap-0.5 py-2 overflow-x-auto scrollbar-hide">
-            {navGroups.map((group, gi) => (
-              <div key={group.label} className="flex items-center">
-                {gi > 0 && <div className="h-5 w-px bg-[#232328] mx-2" />}
-                <span className="text-[10px] text-[#52525B] uppercase tracking-widest font-medium mr-1.5 whitespace-nowrap hidden md:inline">{group.label}</span>
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      data-testid={`nav-${item.label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
-                        isActive(item.path)
-                          ? 'bg-[#F9982E] text-black'
-                          : 'text-[#71717A] hover:text-white hover:bg-[#1C1C1F]'
-                      }`}
-                    >
-                      <Icon size={13} />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
           </div>
         </div>
       </nav>

@@ -99,7 +99,7 @@ class Item(BaseModel):
     total_quantity: int
     quantity_available: int
     quantity_out: int
-    location_in_studio: Optional[str] = None
+    location: Optional[str] = None
     status: str = "Available"
     condition: str = "OK"
     min_stock: Optional[int] = None
@@ -118,7 +118,7 @@ class ItemCreate(BaseModel):
     category: str
     sub_category: Optional[str] = None
     total_quantity: int
-    location_in_studio: Optional[str] = None
+    location: Optional[str] = None
     min_stock: Optional[int] = None
     notes: Optional[str] = None
     product_id: Optional[str] = None
@@ -134,7 +134,7 @@ class ItemUpdate(BaseModel):
     category: Optional[str] = None
     sub_category: Optional[str] = None
     total_quantity: Optional[int] = None
-    location_in_studio: Optional[str] = None
+    location: Optional[str] = None
     status: Optional[str] = None
     condition: Optional[str] = None
     min_stock: Optional[int] = None
@@ -500,6 +500,27 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
     updated_item = await db.items.find_one({"id": item_id}, {"_id": 0})
     if not updated_item:
         raise HTTPException(status_code=404, detail="Item not found")
+    return updated_item
+
+@api_router.put("/items/{item_id}", response_model=Item)
+async def update_item_put(item_id: str, item_data: ItemUpdate, current_user: dict = Depends(get_current_user)):
+    """PUT endpoint for updating items (used by frontend)"""
+    existing = await db.items.find_one({"id": item_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    update_data = {k: v for k, v in item_data.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    # Recalculate quantity_available if total_quantity changed
+    if "total_quantity" in update_data:
+        current_out = existing.get("quantity_out", 0)
+        new_total = update_data["total_quantity"]
+        update_data["quantity_available"] = new_total - current_out
+    
+    await db.items.update_one({"id": item_id}, {"$set": update_data})
+    updated_item = await db.items.find_one({"id": item_id}, {"_id": 0})
     return updated_item
 
 @api_router.delete("/items/{item_id}")
@@ -1118,7 +1139,26 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
         elements.append(Paragraph("No equipment records for this project.", styles['Normal']))
     else:
         # Updated comparison table with missing column
-        equipment_data = [['Item Name', 'Qty Out', 'Returned', 'Missing', 'Pending', 'Status']]
+        item_name_style = ParagraphStyle(
+            'ItemName',
+            parent=styles['Normal'],
+            fontSize=8,
+            fontName='Helvetica',
+            leading=10,
+            wordWrap='CJK'
+        )
+        item_name_header_style = ParagraphStyle(
+            'ItemNameHeader',
+            parent=styles['Normal'],
+            fontSize=9,
+            fontName='Helvetica-Bold',
+            textColor=colors.black,
+            leading=11
+        )
+        
+        equipment_data = [
+            [Paragraph('Item Name', item_name_header_style), 'Qty Out', 'Returned', 'Missing', 'Pending', 'Status']
+        ]
         
         total_out = 0
         total_returned = 0
@@ -1150,7 +1190,7 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
                 status = '✓ COMPLETE'
             
             equipment_data.append([
-                checkout['item_name'],
+                Paragraph(checkout['item_name'], item_name_style),
                 str(qty_out),
                 str(qty_returned),
                 str(qty_missing) if qty_missing > 0 else '—',
@@ -1158,7 +1198,7 @@ async def generate_packing_list_pdf(project_id: str, current_user: dict = Depend
                 status
             ])
         
-        equipment_table = Table(equipment_data, colWidths=[2*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch, 1*inch])
+        equipment_table = Table(equipment_data, colWidths=[2.4*inch, 0.6*inch, 0.7*inch, 0.6*inch, 0.6*inch, 0.9*inch])
         equipment_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F9982E')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -1676,6 +1716,22 @@ async def get_documents(current_user: dict = Depends(get_current_user), category
         query["category"] = category
     docs = await db.documents.find(query, {"_id": 0, "file_data": 0}).sort("created_at", -1).to_list(500)
     return docs
+
+@api_router.get("/document-categories")
+async def get_document_categories(current_user: dict = Depends(get_current_user)):
+    cats = await db.document_categories.find({}, {"_id": 0}).sort("name", 1).to_list(100)
+    return [c["name"] for c in cats]
+
+@api_router.post("/document-categories")
+async def create_document_category(current_user: dict = Depends(get_current_user), name: str = ""):
+    if not name or not name.strip():
+        raise HTTPException(status_code=400, detail="Category name required")
+    name = name.strip()
+    existing = await db.document_categories.find_one({"name": name})
+    if existing:
+        raise HTTPException(status_code=400, detail="Category already exists")
+    await db.document_categories.insert_one({"name": name, "created_at": datetime.now(timezone.utc).isoformat()})
+    return {"name": name}
 
 @api_router.post("/documents")
 async def upload_document(current_user: dict = Depends(get_current_user), file: UploadFile = File(...), name: str = Form(...), category: str = Form("General"), description: str = Form("")):
