@@ -69,6 +69,11 @@ export default function Layout() {
       ]);
       setProjects(projectsRes.data.filter(p => p.status !== 'Wrapped'));
       setCheckouts(checkoutsRes.data);
+      if (checkoutsRes.data.length === 0) {
+        toast.info('No active checkouts to transfer');
+        setLoadingData(false);
+        return;
+      }
       setSelectedSourceProject('');
       setSelectedCheckout('');
       setSelectedTargetProject('');
