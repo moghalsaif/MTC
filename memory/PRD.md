@@ -55,11 +55,14 @@ Equipment tracker dashboard for Mach Visuals, a virtual production company. The 
 - [x] Maintenance scheduling
 - [x] Licence & asset management
 - [x] Dashboard with 7 stat cards (clean, no activity clutter)
-- [x] Documentation module: upload, download, delete files with categories (General, Contracts, Manuals, Insurance, Receipts, SOPs, Safety, Other)
-- [x] Grouped navigation: Mach Traffic Controller / Licences & Assets / Documentation
+- [x] Documentation module: upload/download/delete with **user-created custom categories**
+- [x] Dropdown navigation menus (Mach Traffic Controller dropdown, single links for Licences & Documents)
+- [x] Edit existing inventory items (quantity, status, condition, all fields) via pencil icon
+- [x] Location field is city-based (not studio location)
+- [x] Font size 10% larger globally
 - [x] Dark gradient background with orange accent
 - [x] @machvisuals.com email domain restriction
-- [x] PDF packing list generation
+- [x] PDF packing list with Paragraph wrapping for long item names
 - [x] Wrap-up center with verification logic
 - [x] Dead code cleanup (~700 lines removed: shoot logs, employees, tasks, command center)
 
