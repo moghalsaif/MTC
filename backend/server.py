@@ -1879,6 +1879,196 @@ async def delete_document(doc_id: str, current_user: dict = Depends(get_current_
     return {"message": "Document deleted"}
 
 
+# ==================== REQUESTS ====================
+
+class RequestCreate(BaseModel):
+    item_name: str
+    category: str  # Asset, Tool, Licence, Subscription
+    product_url: str
+    justification: str  # 3-line multi-project benefit
+    l1_price: float
+    negotiation_notes: Optional[str] = ""
+    needed_by_date: str  # must be >= 7 days from now
+
+class RequestApproval(BaseModel):
+    status: str  # Approved, Rejected, On Hold
+    rejection_reason: Optional[str] = None
+    vendor_name: Optional[str] = None
+    vendor_contact: Optional[str] = None
+    best_price: Optional[float] = None
+    registered_company_confirmed: Optional[bool] = None
+
+class FreelancerCreate(BaseModel):
+    full_name: str
+    phone: Optional[str] = ""
+    email: Optional[str] = ""
+    city: Optional[str] = ""
+    portfolio_url: Optional[str] = ""
+    service_types: List[str] = []
+    day_rate: Optional[float] = 0
+    project_rate: Optional[float] = 0
+    availability: Optional[str] = "Available"  # Available, Busy, On Hold
+    engagement_type: Optional[str] = "Freelance"  # Freelance, Retainer, Project-based
+    projects_worked: Optional[str] = ""
+    rating: Optional[int] = 3
+    internal_notes: Optional[str] = ""
+    last_engaged_date: Optional[str] = ""
+
+@api_router.post("/requests")
+async def create_request(
+    current_user: dict = Depends(get_current_user),
+    item_name: str = Form(...),
+    category: str = Form(...),
+    product_url: str = Form(...),
+    justification: str = Form(...),
+    l1_price: float = Form(...),
+    negotiation_notes: str = Form(""),
+    needed_by_date: str = Form(...),
+    photo: UploadFile = File(...)
+):
+    # Validate 7-day lead time
+    try:
+        needed = datetime.fromisoformat(needed_by_date)
+        if needed.tzinfo is None:
+            needed = needed.replace(tzinfo=timezone.utc)
+        min_date = datetime.now(timezone.utc) + timedelta(days=7)
+        if needed < min_date:
+            raise HTTPException(status_code=400, detail="Needed-by date must be at least 1 week from today")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format")
+
+    # Validate justification (at least 3 lines / meaningful content)
+    lines = [l.strip() for l in justification.strip().split('\n') if l.strip()]
+    if len(lines) < 3:
+        raise HTTPException(status_code=400, detail="Justification must include at least 3 lines explaining multi-project benefit")
+
+    # Save photo
+    import base64
+    contents = await photo.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Photo too large. Max 10MB.")
+    encoded_photo = base64.b64encode(contents).decode('utf-8')
+
+    req = {
+        "id": str(uuid.uuid4()),
+        "item_name": item_name,
+        "category": category,
+        "product_url": product_url,
+        "justification": justification,
+        "l1_price": l1_price,
+        "negotiation_notes": negotiation_notes,
+        "needed_by_date": needed_by_date,
+        "photo_data": encoded_photo,
+        "photo_name": photo.filename,
+        "photo_type": photo.content_type or "image/jpeg",
+        "photo_size": len(contents),
+        "submitted_by": current_user.get("name", current_user.get("email")),
+        "submitted_by_email": current_user.get("email"),
+        "status": "Pending",
+        "approval_details": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.requests.insert_one(req)
+    safe = {k: v for k, v in req.items() if k not in ("_id", "photo_data")}
+    safe["has_photo"] = True
+    return safe
+
+@api_router.get("/requests")
+async def get_requests(current_user: dict = Depends(get_current_user)):
+    requests = await db.requests.find({}, {"_id": 0, "photo_data": 0}).sort("created_at", -1).to_list(500)
+    return requests
+
+@api_router.get("/requests/{req_id}/photo")
+async def get_request_photo(req_id: str, current_user: dict = Depends(get_current_user)):
+    import base64
+    req = await db.requests.find_one({"id": req_id}, {"_id": 0, "photo_data": 1, "photo_type": 1, "photo_name": 1})
+    if not req or not req.get("photo_data"):
+        raise HTTPException(status_code=404, detail="Photo not found")
+    file_bytes = base64.b64decode(req["photo_data"])
+    return StreamingResponse(BytesIO(file_bytes), media_type=req.get("photo_type", "image/jpeg"),
+        headers={"Content-Disposition": f'inline; filename="{req.get("photo_name", "photo.jpg")}"'})
+
+@api_router.patch("/requests/{req_id}")
+async def update_request_status(req_id: str, approval: RequestApproval, current_user: dict = Depends(require_role("admin"))):
+    req = await db.requests.find_one({"id": req_id}, {"_id": 0})
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    update = {"status": approval.status, "updated_at": datetime.now(timezone.utc).isoformat()}
+
+    if approval.status == "Approved":
+        if not approval.vendor_name or not approval.vendor_contact or not approval.best_price:
+            raise HTTPException(status_code=400, detail="Vendor name, contact, and best price are required for approval")
+        if not approval.registered_company_confirmed:
+            raise HTTPException(status_code=400, detail="Must confirm vendor is a registered company with physical office")
+        update["approval_details"] = {
+            "vendor_name": approval.vendor_name,
+            "vendor_contact": approval.vendor_contact,
+            "best_price": approval.best_price,
+            "registered_company_confirmed": approval.registered_company_confirmed,
+            "approved_by": current_user.get("name"),
+            "approved_at": datetime.now(timezone.utc).isoformat(),
+        }
+    elif approval.status == "Rejected":
+        update["approval_details"] = {
+            "rejection_reason": approval.rejection_reason or "",
+            "rejected_by": current_user.get("name"),
+            "rejected_at": datetime.now(timezone.utc).isoformat(),
+        }
+    elif approval.status == "On Hold":
+        update["approval_details"] = {
+            "held_by": current_user.get("name"),
+            "held_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    await db.requests.update_one({"id": req_id}, {"$set": update})
+    updated = await db.requests.find_one({"id": req_id}, {"_id": 0, "photo_data": 0})
+    return updated
+
+@api_router.delete("/requests/{req_id}")
+async def delete_request(req_id: str, current_user: dict = Depends(require_role("admin"))):
+    result = await db.requests.delete_one({"id": req_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Request not found")
+    return {"message": "Request deleted"}
+
+# ==================== FREELANCERS (Admin Only) ====================
+
+@api_router.post("/freelancers")
+async def create_freelancer(data: FreelancerCreate, current_user: dict = Depends(require_role("admin"))):
+    fl = {
+        "id": str(uuid.uuid4()),
+        **data.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.freelancers.insert_one(fl)
+    return {k: v for k, v in fl.items() if k != "_id"}
+
+@api_router.get("/freelancers")
+async def get_freelancers(current_user: dict = Depends(require_role("admin"))):
+    freelancers = await db.freelancers.find({}, {"_id": 0}).sort("full_name", 1).to_list(500)
+    return freelancers
+
+@api_router.put("/freelancers/{fl_id}")
+async def update_freelancer(fl_id: str, data: FreelancerCreate, current_user: dict = Depends(require_role("admin"))):
+    existing = await db.freelancers.find_one({"id": fl_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Freelancer not found")
+    update = {**data.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}
+    await db.freelancers.update_one({"id": fl_id}, {"$set": update})
+    updated = await db.freelancers.find_one({"id": fl_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/freelancers/{fl_id}")
+async def delete_freelancer(fl_id: str, current_user: dict = Depends(require_role("admin"))):
+    result = await db.freelancers.delete_one({"id": fl_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Freelancer not found")
+    return {"message": "Freelancer deleted"}
+
+
 app.include_router(api_router)
 
 app.add_middleware(

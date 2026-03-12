@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, Package, PackageOpen, FolderKanban, AlertTriangle, PackageX, Wrench, LogOut, ArrowRightLeft, CreditCard, FileText, ChevronDown, Calculator, IndianRupee } from 'lucide-react';
+import { LayoutDashboard, Package, PackageOpen, FolderKanban, AlertTriangle, PackageX, Wrench, LogOut, ArrowRightLeft, CreditCard, FileText, ChevronDown, Calculator, IndianRupee, ClipboardList, Users } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
@@ -43,6 +43,8 @@ const navGroups = [
     items: [
       { path: '/timecode-calculator', icon: Calculator, label: 'Timecode Calculator' },
       { path: '/costing-calculator', icon: IndianRupee, label: 'Production Costing' },
+      { path: '/requests', icon: ClipboardList, label: 'Requests' },
+      { path: '/freelancers', icon: Users, label: 'Freelancer Database' },
     ],
   },
 ];
