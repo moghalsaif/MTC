@@ -268,16 +268,40 @@ class Issue(BaseModel):
     item_id: str
     item_name: str
     description: str
+    issue_type: str = "Damage"  # Damage, Malfunction, Missing Part, Calibration, Other
     severity: str = "Medium"
     status: str = "Open"
+    reported_by: Optional[str] = None
+    reported_by_email: Optional[str] = None
     assigned_to: Optional[str] = None
+    assigned_to_email: Optional[str] = None
+    vendor_contact: Optional[str] = None
     project_id: Optional[str] = None
+    resolution_notes: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     resolved_at: Optional[str] = None
 
 class IssueCreate(BaseModel):
     item_id: str
     description: str
+    issue_type: Optional[str] = "Damage"
+    severity: Optional[str] = "Medium"
+    reported_by: Optional[str] = None
+    reported_by_email: Optional[str] = None
+    assigned_to: Optional[str] = None
+    assigned_to_email: Optional[str] = None
+    vendor_contact: Optional[str] = None
+    project_id: Optional[str] = None
+
+class IssueUpdate(BaseModel):
+    description: Optional[str] = None
+    issue_type: Optional[str] = None
+    severity: Optional[str] = None
+    status: Optional[str] = None
+    assigned_to: Optional[str] = None
+    assigned_to_email: Optional[str] = None
+    vendor_contact: Optional[str] = None
+    resolution_notes: Optional[str] = None
 
 # Licence Management Models
 class Licence(BaseModel):
@@ -518,6 +542,26 @@ async def update_item_put(item_id: str, item_data: ItemUpdate, current_user: dic
         current_out = existing.get("quantity_out", 0)
         new_total = update_data["total_quantity"]
         update_data["quantity_available"] = new_total - current_out
+    
+    # Auto-create issue when condition changes to "Needs Repair" or "Damaged"
+    old_condition = existing.get("condition", "OK")
+    new_condition = update_data.get("condition")
+    if new_condition and new_condition in ("Needs Repair", "Damaged") and old_condition not in ("Needs Repair", "Damaged"):
+        # Check no existing open issue for this item
+        existing_issue = await db.issues.find_one({"item_id": item_id, "status": {"$ne": "Resolved"}})
+        if not existing_issue:
+            issue = Issue(
+                item_id=item_id,
+                item_name=existing["name"],
+                description=f"Item condition changed to {new_condition}",
+                issue_type="Damage" if new_condition == "Damaged" else "Malfunction",
+                severity="High" if new_condition == "Damaged" else "Medium",
+                reported_by=current_user.get("name", current_user.get("email")),
+                reported_by_email=current_user.get("email"),
+            )
+            await db.issues.insert_one(issue.model_dump())
+        # Also set status to Under Maintenance
+        update_data["status"] = "Under Maintenance"
     
     await db.items.update_one({"id": item_id}, {"$set": update_data})
     updated_item = await db.items.find_one({"id": item_id}, {"_id": 0})
@@ -939,25 +983,51 @@ async def create_issue(issue_data: IssueCreate, current_user: dict = Depends(get
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    issue = Issue(
-        item_id=issue_data.item_id,
-        item_name=item["name"],
-        description=issue_data.description,
-        severity=issue_data.severity or "Medium",
-        assigned_to=issue_data.assigned_to,
-        project_id=issue_data.project_id
-    )
+    issue_dict = issue_data.model_dump()
+    issue_dict["item_name"] = item["name"]
+    if not issue_dict.get("reported_by"):
+        issue_dict["reported_by"] = current_user.get("name", current_user.get("email"))
+    if not issue_dict.get("reported_by_email"):
+        issue_dict["reported_by_email"] = current_user.get("email")
+    
+    issue = Issue(**issue_dict)
     await db.issues.insert_one(issue.model_dump())
+    
+    # Update item condition to Needs Repair if not already
+    if item.get("condition") == "OK":
+        await db.items.update_one({"id": issue_data.item_id}, {"$set": {"condition": "Needs Repair"}})
+    
     return issue
 
 @api_router.patch("/issues/{issue_id}")
-async def update_issue(issue_id: str, status: str, current_user: dict = Depends(get_current_user)):
-    update_data = {"status": status}
-    if status == "Resolved":
-        update_data["resolved_at"] = datetime.now(timezone.utc).isoformat()
+async def update_issue(issue_id: str, current_user: dict = Depends(get_current_user), status: Optional[str] = None, issue_update: Optional[IssueUpdate] = None):
+    existing = await db.issues.find_one({"id": issue_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Issue not found")
     
-    await db.issues.update_one({"id": issue_id}, {"$set": update_data})
-    return {"message": "Issue updated successfully"}
+    update_data = {}
+    
+    # Handle body-based update
+    if issue_update:
+        update_data = {k: v for k, v in issue_update.model_dump().items() if v is not None}
+    
+    # Handle query param status (backwards compat)
+    if status:
+        update_data["status"] = status
+    
+    if update_data.get("status") == "Resolved":
+        update_data["resolved_at"] = datetime.now(timezone.utc).isoformat()
+        # Cross-link: restore item condition to OK
+        await db.items.update_one(
+            {"id": existing["item_id"]},
+            {"$set": {"condition": "OK", "status": "Available"}}
+        )
+    
+    if update_data:
+        await db.issues.update_one({"id": issue_id}, {"$set": update_data})
+    
+    updated = await db.issues.find_one({"id": issue_id}, {"_id": 0})
+    return updated
 
 # Lost Items Routes
 @api_router.get("/lost-items", response_model=List[LostItem])

@@ -1,0 +1,117 @@
+{
+  "summary": "Iteration 11 testing completed - Inventory ↔ Issues cross-linking features fully verified. All backend and frontend features working correctly.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "passed_tests": [
+    "Backend: PUT /api/items/{id} with condition='Needs Repair' auto-creates an issue",
+    "Backend: PUT /api/items/{id} with condition='Needs Repair' sets item status to 'Under Maintenance'",
+    "Backend: Auto-created issue has correct issue_type='Malfunction' and severity='Medium'",
+    "Backend: Auto-created issue has reported_by and reported_by_email from current user",
+    "Backend: PUT /api/items/{id} with condition='Damaged' auto-creates issue with type='Damage' and severity='High'",
+    "Backend: POST /api/issues creates issue with all new fields (issue_type, reported_by, reported_by_email, assigned_to, assigned_to_email, vendor_contact)",
+    "Backend: POST /api/issues also sets item condition to 'Needs Repair' if it was OK",
+    "Backend: PATCH /api/issues/{id} with status='Resolved' sets item condition to 'OK' and status to 'Available'",
+    "Backend: PATCH /api/issues/{id}?status=Resolved works (backwards compatibility)",
+    "Backend: PATCH /api/issues/{id} accepts body with IssueUpdate fields (description, severity, assigned_to, resolution_notes etc)",
+    "Frontend: Issues page has search input that filters issues",
+    "Frontend: Issues page has status filter dropdown (Open/Resolved/All)",
+    "Frontend: Issues page shows expandable rows with reporter info, assigned to, emails, vendor contact",
+    "Frontend: Report Issue dialog has all fields: item, description, issue_type, severity, reported_by, reporter_email, assigned_to, assignee_email, vendor_contact",
+    "Frontend: Edit Issue dialog allows updating: description, type, severity, status, assigned_to, assignee_email, vendor_contact, resolution_notes",
+    "Frontend: Resolve button on issue updates status and restores item",
+    "Frontend: Inventory Edit dialog has Condition dropdown with options: OK, Needs Repair, Damaged",
+    "Frontend: Inventory Edit dialog has Status dropdown with options: Available, Under Maintenance, Reserved, Lost"
+  ],
+  
+  "test_report_links": [
+    "/app/backend/tests/test_inventory_issues_crosslink.py",
+    "/app/test_reports/pytest/pytest_results_iter11.xml"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [],
+  
+  "updated_files": [
+    "/app/backend/tests/test_inventory_issues_crosslink.py"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (12/12 tests passed)",
+    "frontend": "100% (all UI features verified)"
+  },
+  
+  "test_credentials": {
+    "email": "agent@machvisuals.com",
+    "password": "password123"
+  },
+  
+  "seed_data_creation": "Test items and issues created during testing were cleaned up at end of test run",
+  
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  
+  "context_for_next_testing_agent": "Iteration 11 verified Inventory ↔ Issues cross-linking: 1) Setting item condition to 'Needs Repair' or 'Damaged' auto-creates an issue and sets status to 'Under Maintenance', 2) Resolving an issue restores item condition to 'OK' and status to 'Available', 3) Manual issue creation sets item condition to 'Needs Repair', 4) Issues page has expandable rows with full detail (reporter, assignee, emails, vendor contact), 5) Edit Issue dialog supports all new fields. Dark theme styling is correct.",
+  
+  "verified_features": {
+    "inventory_to_issues_crosslink": {
+      "condition_needs_repair": "VERIFIED - Auto-creates issue with type=Malfunction, severity=Medium, sets item status to Under Maintenance",
+      "condition_damaged": "VERIFIED - Auto-creates issue with type=Damage, severity=High, sets item status to Under Maintenance",
+      "auto_issue_has_reporter": "VERIFIED - Sets reported_by and reported_by_email from current user"
+    },
+    "issues_to_inventory_crosslink": {
+      "resolve_restores_item": "VERIFIED - Sets item condition=OK, status=Available",
+      "query_param_resolve": "VERIFIED - ?status=Resolved still works (backwards compat)"
+    },
+    "manual_issue_creation": {
+      "post_issues_endpoint": "VERIFIED - Creates issue with all fields: item_id, description, issue_type, severity, reported_by, reported_by_email, assigned_to, assigned_to_email, vendor_contact",
+      "updates_item_condition": "VERIFIED - Sets item condition to 'Needs Repair' if it was OK"
+    },
+    "issue_update_fields": {
+      "patch_accepts_body": "VERIFIED - IssueUpdate model: description, issue_type, severity, status, assigned_to, assigned_to_email, vendor_contact, resolution_notes"
+    },
+    "issues_page_ui": {
+      "search": "VERIFIED - Filters issues by item name, description, or assignee",
+      "status_filter": "VERIFIED - Open/Resolved/All dropdown",
+      "expandable_rows": "VERIFIED - Shows Reported By, Assigned To, Vendor Contact, emails",
+      "edit_details_button": "VERIFIED - Opens edit dialog",
+      "resolve_button": "VERIFIED - Resolves issue and restores item"
+    },
+    "report_issue_dialog": {
+      "item_select": "VERIFIED",
+      "description_input": "VERIFIED",
+      "issue_type_select": "VERIFIED - Damage, Malfunction, Missing Part, Calibration, Other",
+      "severity_select": "VERIFIED - Low, Medium, High, Critical",
+      "reported_by_input": "VERIFIED",
+      "reporter_email_input": "VERIFIED",
+      "assigned_to_input": "VERIFIED",
+      "assignee_email_input": "VERIFIED",
+      "vendor_contact_input": "VERIFIED"
+    },
+    "edit_issue_dialog": {
+      "description": "VERIFIED",
+      "type": "VERIFIED",
+      "severity": "VERIFIED",
+      "status": "VERIFIED - Open, In Progress, Resolved",
+      "assigned_to": "VERIFIED",
+      "assignee_email": "VERIFIED",
+      "vendor_contact": "VERIFIED",
+      "resolution_notes": "VERIFIED"
+    },
+    "inventory_edit_dialog": {
+      "condition_dropdown": "VERIFIED - OK, Needs Repair, Damaged",
+      "status_dropdown": "VERIFIED - Available, Under Maintenance, Reserved, Lost"
+    },
+    "dark_theme_styling": "VERIFIED - Issues page uses dark theme matching rest of app"
+  }
+}
