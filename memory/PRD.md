@@ -50,7 +50,9 @@ Equipment tracker dashboard for Mach Visuals, a virtual production company. The 
 - [x] Check-out / check-in workflow with partial returns
 - [x] Equipment transfer between projects
 - [x] Project management (CRUD, status tracking)
-- [x] Issue tracking (auto-created for damaged returns)
+- [x] Inventory ↔ Issues cross-linking (condition change auto-creates issues, resolve restores item)
+- [x] Issues page with expandable rows, reporter/assignee info, emails, vendor contact, resolution notes
+- [x] Issue types: Damage, Malfunction, Missing Part, Calibration, Other
 - [x] Lost items tracking
 - [x] Maintenance scheduling
 - [x] Licence & asset management
