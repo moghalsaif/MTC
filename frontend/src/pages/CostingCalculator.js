@@ -162,12 +162,10 @@ export default function CostingCalculator() {
               <CountInput label="No. of Environments" value={vp.numberOfEnvironments} onChange={v => setVp({ ...vp, numberOfEnvironments: v })} testId="vp-env-count" />
               <SubTotal label="Environments" amount={vp.environmentCost * vp.numberOfEnvironments} />
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <NumInput label="Travel Base Cost" value={vp.travelCost} onChange={v => setVp({ ...vp, travelCost: v })} testId="vp-travel" />
+              <NumInput label="MIS Costing" value={vp.misCost} onChange={v => setVp({ ...vp, misCost: v })} testId="vp-mis" />
               <SubTotal label="Travel (+5% margin)" amount={vp.travelCost * 1.05} />
-              <div className="grid grid-cols-1 gap-3">
-                <NumInput label="MIS Costing" value={vp.misCost} onChange={v => setVp({ ...vp, misCost: v })} testId="vp-mis" />
-              </div>
             </div>
           </div>
         </Section>

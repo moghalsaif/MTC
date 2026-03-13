@@ -17,6 +17,7 @@ import TimecodeCalculator from './pages/TimecodeCalculator';
 import CostingCalculator from './pages/CostingCalculator';
 import Requests from './pages/Requests';
 import Freelancers from './pages/Freelancers';
+import CRM from './pages/CRM';
 import Layout from './components/Layout';
 
 const PrivateRoute = ({ children }) => {
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="costing-calculator" element={<CostingCalculator />} />
         <Route path="requests" element={<Requests />} />
         <Route path="freelancers" element={<Freelancers />} />
+        <Route path="crm" element={<CRM />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

@@ -1905,14 +1905,19 @@ class FreelancerCreate(BaseModel):
     city: Optional[str] = ""
     portfolio_url: Optional[str] = ""
     service_types: List[str] = []
-    day_rate: Optional[float] = 0
-    project_rate: Optional[float] = 0
-    availability: Optional[str] = "Available"  # Available, Busy, On Hold
-    engagement_type: Optional[str] = "Freelance"  # Freelance, Retainer, Project-based
-    projects_worked: Optional[str] = ""
-    rating: Optional[int] = 3
+    rate_type: Optional[str] = "per_day"  # per_day, per_shot, per_project
+    standard_rate: Optional[float] = 0
+    availability: Optional[str] = "Available"
     internal_notes: Optional[str] = ""
-    last_engaged_date: Optional[str] = ""
+
+class FreelancerPaymentCreate(BaseModel):
+    freelancer_id: str
+    project_name: str
+    description: Optional[str] = ""
+    amount_charged: float
+    amount_paid: float
+    payment_date: Optional[str] = ""
+    status: Optional[str] = "Pending"  # Pending, Partial, Paid
 
 @api_router.post("/requests")
 async def create_request(
@@ -2033,16 +2038,11 @@ async def delete_request(req_id: str, current_user: dict = Depends(require_role(
         raise HTTPException(status_code=404, detail="Request not found")
     return {"message": "Request deleted"}
 
-# ==================== FREELANCERS (Admin Only) ====================
+# ==================== FREELANCERS (Expense Tracking) ====================
 
 @api_router.post("/freelancers")
 async def create_freelancer(data: FreelancerCreate, current_user: dict = Depends(require_role("admin"))):
-    fl = {
-        "id": str(uuid.uuid4()),
-        **data.model_dump(),
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
+    fl = {"id": str(uuid.uuid4()), **data.model_dump(), "total_paid": 0, "total_charged": 0, "projects_count": 0, "created_at": datetime.now(timezone.utc).isoformat(), "updated_at": datetime.now(timezone.utc).isoformat()}
     await db.freelancers.insert_one(fl)
     return {k: v for k, v in fl.items() if k != "_id"}
 
@@ -2056,17 +2056,236 @@ async def update_freelancer(fl_id: str, data: FreelancerCreate, current_user: di
     existing = await db.freelancers.find_one({"id": fl_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Freelancer not found")
-    update = {**data.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}
-    await db.freelancers.update_one({"id": fl_id}, {"$set": update})
-    updated = await db.freelancers.find_one({"id": fl_id}, {"_id": 0})
-    return updated
+    await db.freelancers.update_one({"id": fl_id}, {"$set": {**data.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}})
+    return await db.freelancers.find_one({"id": fl_id}, {"_id": 0})
 
 @api_router.delete("/freelancers/{fl_id}")
 async def delete_freelancer(fl_id: str, current_user: dict = Depends(require_role("admin"))):
     result = await db.freelancers.delete_one({"id": fl_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Freelancer not found")
+    await db.freelancer_payments.delete_many({"freelancer_id": fl_id})
     return {"message": "Freelancer deleted"}
+
+@api_router.post("/freelancer-payments")
+async def create_payment(data: FreelancerPaymentCreate, current_user: dict = Depends(require_role("admin"))):
+    fl = await db.freelancers.find_one({"id": data.freelancer_id}, {"_id": 0})
+    if not fl:
+        raise HTTPException(status_code=404, detail="Freelancer not found")
+    payment = {"id": str(uuid.uuid4()), **data.model_dump(), "created_by": current_user.get("name", ""), "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.freelancer_payments.insert_one(payment)
+    # Update freelancer totals
+    payments = await db.freelancer_payments.find({"freelancer_id": data.freelancer_id}, {"_id": 0}).to_list(1000)
+    total_charged = sum(p.get("amount_charged", 0) for p in payments)
+    total_paid = sum(p.get("amount_paid", 0) for p in payments)
+    projects = len(set(p.get("project_name", "") for p in payments))
+    await db.freelancers.update_one({"id": data.freelancer_id}, {"$set": {"total_charged": total_charged, "total_paid": total_paid, "projects_count": projects}})
+    return {k: v for k, v in payment.items() if k != "_id"}
+
+@api_router.get("/freelancer-payments")
+async def get_payments(current_user: dict = Depends(require_role("admin")), freelancer_id: Optional[str] = None):
+    query = {"freelancer_id": freelancer_id} if freelancer_id else {}
+    payments = await db.freelancer_payments.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return payments
+
+@api_router.get("/freelancer-dashboard")
+async def freelancer_dashboard(current_user: dict = Depends(require_role("admin"))):
+    freelancers = await db.freelancers.find({}, {"_id": 0}).to_list(500)
+    payments = await db.freelancer_payments.find({}, {"_id": 0}).to_list(5000)
+    total_spent = sum(p.get("amount_paid", 0) for p in payments)
+    total_charged = sum(p.get("amount_charged", 0) for p in payments)
+    total_freelancers = len(freelancers)
+    project_spending = {}
+    for p in payments:
+        proj = p.get("project_name", "Unknown")
+        if proj not in project_spending:
+            project_spending[proj] = {"charged": 0, "paid": 0, "freelancers": set()}
+        project_spending[proj]["charged"] += p.get("amount_charged", 0)
+        project_spending[proj]["paid"] += p.get("amount_paid", 0)
+        project_spending[proj]["freelancers"].add(p.get("freelancer_id", ""))
+    project_summary = [{"project": k, "charged": v["charged"], "paid": v["paid"], "freelancer_count": len(v["freelancers"])} for k, v in project_spending.items()]
+    return {"total_spent": total_spent, "total_charged": total_charged, "total_freelancers": total_freelancers, "total_payments": len(payments), "project_summary": sorted(project_summary, key=lambda x: x["paid"], reverse=True)}
+
+@api_router.delete("/freelancer-payments/{payment_id}")
+async def delete_payment(payment_id: str, current_user: dict = Depends(require_role("admin"))):
+    payment = await db.freelancer_payments.find_one({"id": payment_id}, {"_id": 0})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    await db.freelancer_payments.delete_one({"id": payment_id})
+    # Recalculate freelancer totals
+    fl_id = payment.get("freelancer_id")
+    if fl_id:
+        payments = await db.freelancer_payments.find({"freelancer_id": fl_id}, {"_id": 0}).to_list(1000)
+        total_charged = sum(p.get("amount_charged", 0) for p in payments)
+        total_paid = sum(p.get("amount_paid", 0) for p in payments)
+        projects = len(set(p.get("project_name", "") for p in payments))
+        await db.freelancers.update_one({"id": fl_id}, {"$set": {"total_charged": total_charged, "total_paid": total_paid, "projects_count": projects}})
+    return {"message": "Payment deleted"}
+
+# ==================== CRM ====================
+
+class LeadCreate(BaseModel):
+    name: str
+    company: Optional[str] = ""
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
+    source: str = "Website"
+    service_interested: Optional[str] = ""
+    budget: Optional[float] = 0
+    urgency: Optional[str] = "Medium"
+    assigned_to: Optional[str] = ""
+    notes: Optional[str] = ""
+    follow_up_date: Optional[str] = ""
+
+class LeadUpdate(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    assigned_to: Optional[str] = None
+    follow_up_date: Optional[str] = None
+    budget: Optional[float] = None
+    urgency: Optional[str] = None
+    lost_reason: Optional[str] = None
+    service_interested: Optional[str] = None
+
+class ClientCreate(BaseModel):
+    company_name: str
+    industry: Optional[str] = ""
+    contact_person: Optional[str] = ""
+    designation: Optional[str] = ""
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
+    address: Optional[str] = ""
+    gst_number: Optional[str] = ""
+    client_type: str = "Brand"
+    lead_id: Optional[str] = None
+    notes: Optional[str] = ""
+
+@api_router.post("/crm/leads")
+async def create_lead(data: LeadCreate, current_user: dict = Depends(get_current_user)):
+    lead = {
+        "id": str(uuid.uuid4()), **data.model_dump(),
+        "status": "New", "score": 0,
+        "activity_log": [{"action": "Lead created", "by": current_user.get("name", ""), "at": datetime.now(timezone.utc).isoformat()}],
+        "last_activity": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user.get("name", ""),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    # Score calculation
+    score = 0
+    if data.budget and data.budget > 500000: score += 30
+    elif data.budget and data.budget > 100000: score += 20
+    elif data.budget: score += 10
+    if data.urgency == "High": score += 30
+    elif data.urgency == "Medium": score += 15
+    lead["score"] = score
+    await db.crm_leads.insert_one(lead)
+    return {k: v for k, v in lead.items() if k != "_id"}
+
+@api_router.get("/crm/leads")
+async def get_leads(current_user: dict = Depends(get_current_user)):
+    leads = await db.crm_leads.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    # Flag at-risk leads
+    now = datetime.now(timezone.utc)
+    for lead in leads:
+        last = datetime.fromisoformat(lead.get("last_activity", lead["created_at"]))
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        hours_since = (now - last).total_seconds() / 3600
+        lead["hours_inactive"] = round(hours_since, 1)
+        lead["at_risk"] = hours_since > 120  # 5 days
+        lead["needs_attention"] = hours_since > 48
+        lead["escalated"] = hours_since > 72
+    return leads
+
+@api_router.patch("/crm/leads/{lead_id}")
+async def update_lead(lead_id: str, data: LeadUpdate, current_user: dict = Depends(get_current_user)):
+    lead = await db.crm_leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    update = {k: v for k, v in data.model_dump().items() if v is not None}
+    if "status" in update and update["status"] not in ("New",):
+        if not data.follow_up_date and not lead.get("follow_up_date"):
+            pass  # Allow without follow-up for Won/Lost
+    activity = {"action": f"Updated: {', '.join(update.keys())}", "by": current_user.get("name", ""), "at": datetime.now(timezone.utc).isoformat()}
+    if "status" in update:
+        activity["action"] = f"Status changed to {update['status']}"
+    update["last_activity"] = datetime.now(timezone.utc).isoformat()
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.crm_leads.update_one({"id": lead_id}, {"$set": update, "$push": {"activity_log": activity}})
+    return await db.crm_leads.find_one({"id": lead_id}, {"_id": 0})
+
+@api_router.post("/crm/leads/{lead_id}/note")
+async def add_lead_note(lead_id: str, current_user: dict = Depends(get_current_user), note: str = ""):
+    lead = await db.crm_leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    activity = {"action": f"Note: {note}", "by": current_user.get("name", ""), "at": datetime.now(timezone.utc).isoformat()}
+    await db.crm_leads.update_one({"id": lead_id}, {"$push": {"activity_log": activity}, "$set": {"last_activity": datetime.now(timezone.utc).isoformat(), "updated_at": datetime.now(timezone.utc).isoformat()}})
+    return {"message": "Note added"}
+
+@api_router.post("/crm/clients")
+async def create_client(data: ClientCreate, current_user: dict = Depends(get_current_user)):
+    client = {"id": str(uuid.uuid4()), **data.model_dump(), "onboarding": {"welcome_email": False, "contract_signed": False, "advance_received": False, "brief_received": False, "kickoff_scheduled": False}, "created_by": current_user.get("name", ""), "created_at": datetime.now(timezone.utc).isoformat(), "updated_at": datetime.now(timezone.utc).isoformat()}
+    await db.crm_clients.insert_one(client)
+    if data.lead_id:
+        await db.crm_leads.update_one({"id": data.lead_id}, {"$set": {"status": "Won", "updated_at": datetime.now(timezone.utc).isoformat()}, "$push": {"activity_log": {"action": "Converted to client", "by": current_user.get("name", ""), "at": datetime.now(timezone.utc).isoformat()}}})
+    return {k: v for k, v in client.items() if k != "_id"}
+
+@api_router.get("/crm/clients")
+async def get_clients(current_user: dict = Depends(get_current_user)):
+    return await db.crm_clients.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+@api_router.put("/crm/clients/{client_id}")
+async def update_client(client_id: str, data: ClientCreate, current_user: dict = Depends(get_current_user)):
+    existing = await db.crm_clients.find_one({"id": client_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Client not found")
+    await db.crm_clients.update_one({"id": client_id}, {"$set": {**data.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}})
+    return await db.crm_clients.find_one({"id": client_id}, {"_id": 0})
+
+@api_router.patch("/crm/clients/{client_id}/onboarding")
+async def update_onboarding(client_id: str, current_user: dict = Depends(get_current_user), step: str = "", value: bool = True):
+    await db.crm_clients.update_one({"id": client_id}, {"$set": {f"onboarding.{step}": value, "updated_at": datetime.now(timezone.utc).isoformat()}})
+    return await db.crm_clients.find_one({"id": client_id}, {"_id": 0})
+
+@api_router.get("/crm/dashboard")
+async def crm_dashboard(current_user: dict = Depends(get_current_user)):
+    leads = await db.crm_leads.find({}, {"_id": 0}).to_list(1000)
+    clients = await db.crm_clients.find({}, {"_id": 0}).to_list(500)
+    now = datetime.now(timezone.utc)
+    this_month = now.replace(day=1).isoformat()
+    leads_this_month = [l for l in leads if l.get("created_at", "") >= this_month]
+    won = [l for l in leads if l.get("status") == "Won"]
+    lost = [l for l in leads if l.get("status") == "Lost"]
+    pipeline_value = sum(l.get("budget", 0) for l in leads if l.get("status") in ("Qualified", "Proposal Sent", "Negotiation"))
+    at_risk = 0
+    needs_attention = 0
+    for l in leads:
+        if l.get("status") in ("Won", "Lost"):
+            continue
+        last = datetime.fromisoformat(l.get("last_activity", l["created_at"]))
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        hours = (now - last).total_seconds() / 3600
+        if hours > 120: at_risk += 1
+        elif hours > 48: needs_attention += 1
+    by_status = {}
+    for l in leads:
+        s = l.get("status", "New")
+        by_status[s] = by_status.get(s, 0) + 1
+    by_source = {}
+    for l in leads:
+        s = l.get("source", "Other")
+        by_source[s] = by_source.get(s, 0) + 1
+    conversion_rate = round(len(won) / max(len(leads), 1) * 100, 1)
+    return {
+        "total_leads": len(leads), "leads_this_month": len(leads_this_month),
+        "total_clients": len(clients), "won": len(won), "lost": len(lost),
+        "pipeline_value": pipeline_value, "conversion_rate": conversion_rate,
+        "at_risk": at_risk, "needs_attention": needs_attention,
+        "by_status": by_status, "by_source": by_source,
+    }
 
 
 app.include_router(api_router)

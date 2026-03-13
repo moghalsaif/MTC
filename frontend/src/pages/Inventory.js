@@ -149,7 +149,7 @@ export default function Inventory() {
     <tr key={item.id} data-testid={`item-row-${item.id}`} className="border-b border-[#232328] last:border-b-0 hover:bg-[#1C1C1F] transition-colors">
       <td className="py-3 px-4 w-[40%]">
         <div className="text-white text-sm font-medium">{item.name}</div>
-        {item.sub_category && <div className="text-[10px] text-[#3F3F46] mt-0.5">{item.sub_category}</div>}
+        {item.sub_category && <div className="text-xs text-[#F9982E] mt-0.5">{item.sub_category}</div>}
       </td>
       <td className="py-3 px-3 text-center w-14"><div className="font-data text-sm text-white font-bold">{item.quantity_available}</div><div className="text-[9px] text-[#3F3F46] uppercase">Avail</div></td>
       <td className="py-3 px-3 text-center w-14"><div className={`font-data text-sm font-bold ${item.quantity_out > 0 ? 'text-[#F9982E]' : 'text-[#232328]'}`}>{item.quantity_out}</div><div className="text-[9px] text-[#3F3F46] uppercase">Out</div></td>
