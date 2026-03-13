@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 import io
 import base64
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://frame-rate-tool.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://lead-manager-95.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_CREDS = {"email": "sanat@machvisuals.com", "password": "MachAdmin@2026"}

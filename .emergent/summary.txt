@@ -1,76 +1,99 @@
-<analysis>**original_problem_statement:** The user wants to add a new tool to the application called Timecode Calculator. This tool should be placed under a new navigation header named Tools at mach. The core functionality should be a clone of the calculator found at , but with an improved, more intuitive user interface. Key requirements include a clear visual distinction between add and subtract operations to prevent user error, and easy-to-use copy buttons for the results.
+<analysis>**original_problem_statement:** The user initially requested a Timecode Calculator tool. Over the course of the session, the scope expanded significantly to include:
+-   A comprehensive Role-Based Access Control (RBAC) system with 'admin', 'manager', and 'user' roles.
+-   A Costing Calculator for project quotations.
+-   A Requests module for asset procurement.
+-   A Freelancer Database with expense tracking capabilities.
+-   A complete Customer Relationship Management (CRM) module with lead management, data import, client database, and onboarding workflows to prevent lead leakage.
+-   A request to investigate and fix data integrity issues and leakages in the application.
+-   UI improvements: increasing font sizes in the Inventory and CRM modules, and fixing alignment in the Costing Calculator.
+-   CRM enhancements: adding CSV bulk import and client filtering capabilities.
 
-Additionally, the user has made several requests in this session which have been completed:
--   Automatically create an issue when an inventory item's condition is set to Needs Repair.
--   Add an Edit function for inventory items.
--   Implement dropdown menus for the main navigation to clean up the header.
--   Increase the global font size.
--   Fix PDF generation spacing.
--   Allow custom categories in the Documentation section.
--   Re-categorize specific inventory items.
--   Expand the data model for items to include more detailed logging fields.
+**PRODUCT REQUIREMENTS from the user are:**
+1.  **CRM:** Build a comprehensive system for lead/client management, onboarding, communication logging, and reporting. Key features include a zero lead leakage system, bulk data import (CSV, email), automated alerts, and user roles (Admin, Sales, Operations).
+2.  **Freelancer Module:** Overhaul the existing module to track expenses per project, freelancer payment history, and an overall expense dashboard.
+3.  **Request System:** A tool for team members to request assets, with an approval workflow exclusively for the 'admin' user (Sanat).
+4.  **UI/UX:** Increase font sizes across the CRM by 30% and in the inventory module's subtext by 20%. Fix alignment issues in the Costing Calculator.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack system (FastAPI, React, MongoDB) designed for managing film production inventory and related assets for Mach Visuals. The UI features a modern dark theme with a gradient background and a clean, dropdown-based navigation structure.
-
-Core modules include:
--   **Dashboard:** High-level statistics.
--   **Inventory:** A detailed list of all equipment, with features for adding, editing, and filtering. It has a category-based sidebar for navigation.
--   **Issues:** A tracking system for damaged or malfunctioning equipment. It is cross-linked with the Inventory module, so changing an item's condition to Needs Repair automatically creates an issue, and resolving an issue updates the item's status back.
--   **Documentation:** A module for uploading and organizing documents into custom categories.
--   Other supporting pages for Projects, Items Out, Licences, etc.
+The application is a full-stack system (FastAPI, React, MongoDB) for film production management. It now includes the following modules:
+-   **Dashboard, Inventory, Issues, Documentation:** Core modules for asset and issue management.
+-   **Tools at mach:** A navigation dropdown containing a **Timecode Calculator** and a **Costing Calculator**.
+-   **Requests:** A new module for submitting and managing asset purchase requests.
+-   **Freelancers:** A rebuilt module for tracking freelancer profiles, projects, and expenses.
+-   **CRM:** A new, extensive module for lead and client management, featuring a dashboard, lead/client lists, and data import capabilities.
+-   **Authentication & RBAC:** A JWT-based system with three defined roles (admin, manager, user) that conditionally renders UI elements and protects backend endpoints.
+-   A data integrity audit was performed, and orphaned test data has been cleaned from the database.
 
 **Last working item**:
--   Last item agent was working: The agent was beginning the implementation of the new **Timecode Calculator** feature. It had analyzed the user-provided reference URL to understand the required logic and UI components.
--   Status: NOT STARTED
+-   Last item agent was working: Implementing several CRM enhancements concurrently:
+    1.  Increasing all font sizes in the CRM module by 30%.
+    2.  Adding functionality for bulk client/lead import via CSV.
+    3.  Adding filters to the client list (e.g., by city).
+    The agent has already completed a deep investigation into data leakages and cleaned up test/orphaned data. It then added the backend endpoint for CSV import and overwrote the  frontend file with the new code for the enhancements.
+-   Status: IN PROGRESS
 -   Agent Testing Done: N
--   Which testing method agent to use? frontend testing agent. Since this is a self-contained, client-side utility, the testing agent can be used to verify both the UI and the correctness of the timecode calculations for various frame rates.
+-   Which testing method agent to use? both. The backend CSV import endpoint needs to be tested with a sample file via . The frontend UI changes (font size, filters, import form) should be validated using the .
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
--   There are no pending high-priority issues. Previous issues related to data models and UI have been resolved.
+-   **Issue 1: Complete and Test CRM Enhancements (P0)**
+    -   **Description:** The agent has written the code for increasing font size, adding client filters, and implementing CSV import in the CRM, but it has not been tested or verified.
+    -   **Status:** IN PROGRESS
+-   **Issue 2: Email Verification Implementation (P2)**
+    -   **Description:** This feature is on hold, awaiting a user decision on which third-party email service (e.g., SendGrid, Resend) to integrate.
+    -   **Status:** BLOCKED
+-   **Issue 3: Dialog component accessibility warning (P3)**
+    -   **Description:** A minor accessibility warning in  was noted in a past session and has been deferred.
+    -   **Status:** NOT STARTED
 
 **In progress Task List**:
--   **Task 1: Build Timecode Calculator (P0)**
-    -   **Where to resume:** The agent has completed the analysis and planning phase. The next step is implementation. This involves:
-        1.  Adding a new Tools at mach dropdown to the navigation in .
-        2.  Creating a new page component: .
-        3.  Adding the route for the new page in .
-        4.  Building the UI with React, including inputs for two timecodes, a frame rate selector, and a visually distinct toggle for add/subtract operations.
-        5.  Implementing the timecode calculation logic in JavaScript.
-        6.  Adding copy to clipboard buttons for the results.
-    -   **What will be achieved with this?** A new, valuable utility tool will be added to the application, specifically tailored to the needs of film production professionals.
-    -   **Status:** NOT STARTED
-    -   **Should Test frontend/backend/both after fix?** Frontend
+-   **Task 1: Verify and Test CRM Enhancements (P0)**
+    -   **Where to resume:** The backend  has a new  endpoint, and  has been rewritten. The next steps are:
+        1.  Restart the backend service to ensure it runs with the new code.
+        2.  Verify the frontend compiles without errors.
+        3.  Test the CSV import functionality using  with a test CSV file.
+        4.  Use the screenshot tool to visually confirm the font size increase and the new filter UI elements in the CRM module.
+        5.  Call the  to perform comprehensive testing of the new CRM features.
+    -   **What will be achieved with this?** The CRM will be more user-friendly, readable, and efficient for managing large numbers of clients.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** Both.
     -   **Blocked on something:** None.
 
 **Upcoming and Future Tasks**
--   The user has not specified any upcoming tasks beyond the Timecode Calculator. After its completion, the agent should inquire about the next priority.
+-   **Upcoming Tasks:**
+    -   **CRM Phase 2 (P1):** Implement the remaining features from the user's detailed CRM requirements, which were not part of the initial build. This includes:
+        -   **Lead Management:** Escalation alerts, daily digests, At Risk widgets.
+        -   **Data Import:** Auto-extraction from email inboxes and signatures, Google/Outlook contacts sync.
+        -   **Onboarding Workflow:** Automated checklists and reminders.
+        -   **Communication Log:** Email/call logging and sync.
+        -   **Proposals and Invoices:** Creation, status tracking, and automated reminders.
+        -   **Reports:** Build out the detailed reporting section (leads by source, revenue, team performance, etc.).
+        -   **Automation Rules:** Implement the specified if-then automation logic.
+-   **Future Tasks:**
+    -   Create a  file for the project.
 
 **Completed work in this session**
--   **Feature: Inventory & Issues Cross-Linking:** Implemented a system where setting an item's condition to Needs Repair automatically creates an issue, and resolving the issue updates the item's status back to OK. The Issue model and UI were enhanced to capture more details.
--   **Feature: Edit Inventory Items:** Added functionality for users to edit existing inventory items directly from the UI, including an update endpoint on the backend.
--   **Feature: Custom Documentation Categories:** The Documentation module was updated to allow users to create their own categories for organizing files.
--   **UI Overhaul:**
-    -   The main navigation was refactored to use dropdown menus for a cleaner interface.
-    -   Global font size was increased by 10%.
-    -   The Dashboard was decluttered by removing the Daily Updates section.
--   **Data Model and Backend Enhancements:**
-    -   The  model was expanded with several new fields for detailed logging (SKU, serial number, purchase date, etc.).
-    -   PDF generation for project reports was fixed to correctly wrap long item names.
-    -   Inventory items were re-categorized based on user feedback.
+-   **Feature: Timecode Calculator:** A new client-side tool was added under Tools at mach.
+-   **Feature: Role-Based Access Control (RBAC):** Implemented 'admin', 'manager', and 'user' roles, protecting backend endpoints and conditionally rendering UI components.
+-   **Feature: Costing Calculator:** Added a detailed costing tool for generating project quotations.
+-   **Feature: Request Management System:** Created a new module for team members to request assets, with an admin-only approval flow.
+-   **Feature: Freelancer Module Overhaul:** Rebuilt the freelancer section to include detailed profiles and project-based expense tracking.
+-   **Feature: CRM Module (Phase 1):** Built the initial CRM with a dashboard, lead/client management, and lead scoring.
+-   **Bugfix/Investigation: Data Leakage:** Investigated and cleaned up orphaned and test data from the database, fixing data integrity issues.
+-   **UI Fix: Inventory Subtext:** Increased font size and changed the color of inventory sub-category text.
+-   **UI Fix: Costing Calculator Alignment:** Corrected alignment issues in the production costing section.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: Email Verification Implementation**
-    -   **Debug checklist:** The feature to send verification emails upon registration is paused. It is blocked pending a decision from the user on which third-party email service (e.g., SendGrid, Resend) to integrate.
-    -   **Why to solve this issue and what will be achieved with this?** To enhance security by ensuring only users with valid  email accounts can access the system.
+    -   **Debug checklist:** Blocked pending user decision on the email provider. The implementation will require integrating a service like SendGrid or Resend.
+    -   **Why to solve this issue and what will be achieved with this?** To ensure new users have valid  emails, enhancing security.
     -   **Should Test frontend/backend/both after fix:** Both.
     -   **Is recurring issue?** N
 -   **Issue 2: Dialog component accessibility warning**
-    -   **Debug checklist:** A minor accessibility warning for the  component, noted by a testing agent in a previous fork, has been deferred and not yet addressed.
-    -   **Why to solve this issue and what will be achieved with this?** To improve application accessibility standards.
+    -   **Debug checklist:** Review  and address the accessibility warning reported by a previous testing agent.
+    -   **Why to solve this issue and what will be achieved with this?** To meet accessibility standards.
     -   **Should Test frontend/backend/both after fix:** Frontend.
     -   **Is recurring issue?** N
 
@@ -82,68 +105,91 @@ Core modules include:
 
 **Key Technical Concepts**
 -   **Backend:** FastAPI
--   **Frontend:** React
+-   **Frontend:** React (with Hooks)
 -   **Database:** MongoDB
--   **Authentication:** JWT token-based
--   **Styling:** TailwindCSS with Shadcn UI components
+-   **Authentication:** JWT with Role-Based Access Control (RBAC)
+-   **Styling:** TailwindCSS, Shadcn UI
 
 **key DB schema**
+-   **users:** 
 -   **items:** 
 -   **issues:** 
 -   **documents:** 
+-   **requests:** 
+-   **freelancers:** 
+-   **projects:**  (Implicitly exists for expense tracking)
+-   **freelancer_payments:** 
+-   **leads:** 
+-   **clients:** 
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
--   : Will be modified to add the new Tools at mach navigation dropdown.
--   : Will be modified to add the route for the new calculator page.
--   Reference URL: 
+-   : Heavily modified to include RBAC logic and endpoints for Requests, Freelancers (new structure), and the CRM.
+-   : Newly created and subsequently overwritten with enhancements.
+-   : Overwritten with the new expense tracking UI.
+-   : Newly created.
+-   : Newly created.
+-   : Newly created.
+-   : Modified to add routes for all new pages.
+-   : Modified to add new navigation items and display the user's role.
+-   : Modified to fetch and provide the user's role.
 
 **Areas that need refactoring**:
--   The codebase is relatively clean after a recent major refactoring. No immediate refactoring is required.
+-   The  file has grown excessively large. It contains all models and API routes for every feature. It should be broken down into a more modular structure, with routes in a  directory and Pydantic models in a  directory.
 
 **key api endpoints**
--   The Timecode Calculator is a frontend-only feature and does not require new API endpoints.
+-   **/api/auth/{register, login, me}**: User authentication, now returns user's .
+-   **/api/requests/**: CRUD for asset requests.
+-   **/api/freelancers/**: CRUD for freelancer profiles.
+-   **/api/projects/{project_id}/freelancers**: Endpoints to manage freelancer payments per project.
+-   **/api/crm/leads/**: CRUD for leads.
+-   **/api/crm/clients/**: CRUD for clients.
+-   **/api/crm/import_clients_csv**: New endpoint for bulk CSV upload.
 
 **Critical Info for New Agent**
--   The user places a high value on UI/UX and workflow efficiency. When building the calculator, prioritize creating a very clear and intuitive interface, especially for the add/subtract functionality.
--   This task is purely a frontend development task. There is no need to modify the backend.
--   After completing this task, remember to ask the user for the next set of priorities, as the backlog of major requests has been cleared.
+-   The user has requested a very large set of features for the CRM. The current implementation is just Phase 1. The next agent should plan to build the remaining CRM features systematically.
+-   The  file is a candidate for major refactoring to improve maintainability. This could be proposed to the user as a necessary cleanup task.
+-   Data integrity was a recent problem. Be mindful of creating orphaned data when adding or deleting related documents (e.g., ensure an issue's  always points to a valid item).
 
 **documents and test reports created in this job**
--    (Continuously updated)
--    (Latest test report)
+-   
+-   
+-   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (Msg 241):** Requested the new Timecode Calculator tool, specifying its location under a Tools at mach header and providing a URL to clone its functionality with UI improvements. (PENDING)
-2.  **Agent (Msg 240):** Signalled completion of the previous task (Issues cross-linking).
-3.  **Agent (Msg 238):** Confirmed it was updating the PRD.
-4.  **Testing Agent (Msg 237):** Reported a 100% pass rate on all tests for the Issues feature.
-5.  **Agent (Msg 234):** Initiated the testing agent.
-6.  **User (Msg 232):** Responded  to proceed after viewing a screenshot.
-7.  **Agent (Msg 230):** Confirmed the cross-linking feature was working and provided a screenshot of the updated Issues page.
-8.  **Agent (Msg 228):** Reported successful internal testing of the cross-linking logic.
-9.  **Agent (Msg 219):** Began implementation of the cross-linking fix.
-10. **User (Msg 213):** Reported the need for automatic issue creation when an item is marked for repair and criticized the lack of cross-linking. (COMPLETED)
+1.  **User (Msg 239):** Requested 30% larger fonts in CRM, CSV bulk import, client filters, and a deep check on the Mach Traffic Controller for leakages. (IN PROGRESS)
+2.  **Agent (Msg 237):** Finished a large batch of work (CRM Phase 1, Freelancer overhaul) with a 100% test pass rate and updated the PRD.
+3.  **User (Msg 202):** Provided extremely detailed requirements for a new CRM module. (PARTIALLY COMPLETE)
+4.  **Agent (Msg 200):** Proposed a plan to implement the freelancer module overhaul and inventory UI fixes.
+5.  **User (Msg 197):** Requested UI improvements for the Inventory module, a complete overhaul of the Freelancer module for expense tracking, and a fix for alignment bugs in the Costing Calculator. (COMPLETE)
+6.  **Agent (Msg 196):** Asked for clarification on a cutoff user message.
+7.  **User (Msg 170):** Provided detailed requirements for the Requests module and the Freelancer Database. (COMPLETE)
+8.  **User (Msg 167):** Clarified that only Sanat can approve requests and see freelancer details. (COMPLETE)
+9.  **User (Msg 164):** Requested the new Requests module for asset procurement. (COMPLETE)
+10. **Agent (Msg 162):** Finished implementing the Costing Calculator and setting user passwords, with a 100% test pass rate.
 
 **Project Health Check:**
--   **Broken:** None. The application is stable and all recently implemented features have been tested.
+-   **Broken:** None. The app is stable.
 -   **Mocked:** None.
 
 **3rd Party Integrations**
--   : Used for reading  files (for inventory seeding).
+-   : Used for reading  files.
 -   : Used for server-side PDF generation.
+-   : Used for handling file uploads (e.g., for the Requests module and CSV import).
 
 **Testing status**
--   **Testing agent used after significant changes:** YES. The last major feature (Inventory-Issues cross-linking) was successfully validated by the testing agent.
+-   **Testing agent used after significant changes:** YES. The last major feature set (CRM Phase 1, Freelancer Overhaul) was comprehensively tested and passed.
 -   **Troubleshoot agent used after agent stuck in loop:** NO.
 -   **Test files created:** None.
 -   **Known regressions:** None.
 
 **Credentials to test flow:**
--   User registration is restricted. A new user can be created with any email ending in .
+-   **Admin:**  (Password: ) - Full access.
+-   **Manager:**  (Password: ) - Can add/edit inventory, resolve issues. Cannot delete.
+-   **User:** Any other  email can be registered. Limited access (can view inventory, report issues).
 
 **What agent forgot to execute**
--   **Email Verification Flow:** This task has been consistently deferred as it is blocked on user input to select a third-party email provider.
 -   **README.md File:** A request from a much earlier session to create a  file was superseded by higher-priority tasks and has not been addressed.</analysis>

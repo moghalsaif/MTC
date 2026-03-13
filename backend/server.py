@@ -596,10 +596,20 @@ async def update_item_put(item_id: str, item_data: ItemUpdate, current_user: dic
 
 @api_router.delete("/items/{item_id}")
 async def delete_item(item_id: str, current_user: dict = Depends(require_role("admin"))):
-    result = await db.items.delete_one({"id": item_id})
-    if result.deleted_count == 0:
+    item = await db.items.find_one({"id": item_id}, {"_id": 0})
+    if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    return {"message": "Item deleted successfully"}
+    # Block deletion if item has active checkouts
+    active = await db.checkouts.count_documents({"item_id": item_id, "status": "Active"})
+    if active > 0:
+        raise HTTPException(status_code=400, detail="Cannot delete item with active checkouts. Return all units first.")
+    # Cascade: clean up completed checkouts, issues, lost_items, maintenance referencing this item
+    del_checkouts = await db.checkouts.delete_many({"item_id": item_id})
+    del_issues = await db.issues.delete_many({"item_id": item_id})
+    del_lost = await db.lost_items.delete_many({"item_id": item_id})
+    del_maint = await db.maintenance.delete_many({"item_id": item_id})
+    await db.items.delete_one({"id": item_id})
+    return {"message": "Item deleted successfully", "cascade": {"checkouts": del_checkouts.deleted_count, "issues": del_issues.deleted_count, "lost_items": del_lost.deleted_count, "maintenance": del_maint.deleted_count}}
 
 # Project Routes
 @api_router.get("/projects", response_model=List[Project])
@@ -622,14 +632,17 @@ async def get_project(project_id: str, current_user: dict = Depends(get_current_
 
 @api_router.delete("/projects/{project_id}")
 async def delete_project(project_id: str, current_user: dict = Depends(get_current_user)):
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
     active_checkouts = await db.checkouts.count_documents({"project_id": project_id, "status": "Active"})
     if active_checkouts > 0:
         raise HTTPException(status_code=400, detail="Cannot delete project with active checkouts")
-    
-    result = await db.projects.delete_one({"id": project_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return {"message": "Project deleted successfully"}
+    # Cascade: clean up completed checkouts, lost_items referencing this project
+    del_checkouts = await db.checkouts.delete_many({"project_id": project_id})
+    del_lost = await db.lost_items.delete_many({"project_id": project_id})
+    await db.projects.delete_one({"id": project_id})
+    return {"message": "Project deleted successfully", "cascade": {"checkouts": del_checkouts.deleted_count, "lost_items": del_lost.deleted_count}}
 
 # Update Project
 @api_router.put("/projects/{project_id}")
@@ -2286,6 +2299,176 @@ async def crm_dashboard(current_user: dict = Depends(get_current_user)):
         "at_risk": at_risk, "needs_attention": needs_attention,
         "by_status": by_status, "by_source": by_source,
     }
+
+
+@api_router.post("/crm/leads/import-csv")
+async def import_leads_csv(current_user: dict = Depends(get_current_user), file: UploadFile = File(...)):
+    import csv, io
+    contents = await file.read()
+    try:
+        text = contents.decode('utf-8')
+    except UnicodeDecodeError:
+        text = contents.decode('latin-1')
+    reader = csv.DictReader(io.StringIO(text))
+    created = 0
+    duplicates = 0
+    errors = 0
+    dupes_list = []
+    for row in reader:
+        # Map common CSV column names
+        name = row.get('Name') or row.get('name') or row.get('First Name', '') + ' ' + row.get('Last Name', '')
+        name = name.strip()
+        if not name:
+            errors += 1
+            continue
+        email = row.get('Email') or row.get('email') or row.get('Email Address') or ''
+        phone = row.get('Phone') or row.get('phone') or row.get('Phone Number') or ''
+        company = row.get('Company') or row.get('company') or row.get('Organization') or ''
+        source = row.get('Source') or row.get('source') or 'Other'
+        city = row.get('City') or row.get('city') or row.get('Location') or ''
+        # Dedup by email
+        if email:
+            existing = await db.crm_leads.find_one({"email": email}, {"_id": 0})
+            if existing:
+                duplicates += 1
+                dupes_list.append({"name": name, "email": email, "existing_name": existing.get("name")})
+                continue
+        lead = {
+            "id": str(uuid.uuid4()), "name": name, "company": company,
+            "email": email, "phone": phone, "source": source if source in ['Website','LinkedIn','Referral','Event','Cold Outreach','Other'] else 'Other',
+            "service_interested": row.get('Service') or '', "budget": 0, "urgency": "Medium",
+            "assigned_to": "", "notes": f"Imported from CSV. City: {city}" if city else "Imported from CSV",
+            "follow_up_date": "", "status": "New", "score": 0,
+            "activity_log": [{"action": "Imported from CSV", "by": current_user.get("name", ""), "at": datetime.now(timezone.utc).isoformat()}],
+            "last_activity": datetime.now(timezone.utc).isoformat(),
+            "created_by": current_user.get("name", ""),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.crm_leads.insert_one(lead)
+        created += 1
+    return {"created": created, "duplicates": duplicates, "errors": errors, "duplicates_list": dupes_list[:20]}
+
+
+# ==================== DATA INTEGRITY AUDIT ====================
+
+@api_router.get("/audit/integrity")
+async def audit_data_integrity(current_user: dict = Depends(require_role("admin"))):
+    """Scan for orphaned records and data leakages across all collections."""
+    item_ids = set()
+    async for item in db.items.find({}, {"id": 1, "_id": 0}):
+        item_ids.add(item["id"])
+    project_ids = set()
+    async for proj in db.projects.find({}, {"id": 1, "_id": 0}):
+        project_ids.add(proj["id"])
+
+    orphaned_checkouts = []
+    async for c in db.checkouts.find({}, {"_id": 0}):
+        reasons = []
+        if c["item_id"] not in item_ids:
+            reasons.append("item_missing")
+        if c["project_id"] not in project_ids:
+            reasons.append("project_missing")
+        if reasons:
+            orphaned_checkouts.append({"id": c["id"], "item_name": c["item_name"], "project_name": c["project_name"], "status": c["status"], "reasons": reasons})
+
+    orphaned_issues = []
+    async for issue in db.issues.find({}, {"_id": 0}):
+        if issue["item_id"] not in item_ids:
+            orphaned_issues.append({"id": issue["id"], "item_name": issue["item_name"], "status": issue["status"]})
+
+    orphaned_lost = []
+    async for li in db.lost_items.find({}, {"_id": 0}):
+        reasons = []
+        if li["item_id"] not in item_ids:
+            reasons.append("item_missing")
+        if li["project_id"] not in project_ids:
+            reasons.append("project_missing")
+        if reasons:
+            orphaned_lost.append({"id": li["id"], "item_name": li["item_name"], "project_name": li["project_name"], "reasons": reasons})
+
+    orphaned_maintenance = []
+    async for m in db.maintenance.find({}, {"_id": 0}):
+        if m["item_id"] not in item_ids:
+            orphaned_maintenance.append({"id": m["id"], "item_name": m["item_name"], "status": m["status"]})
+
+    # Quantity integrity check
+    qty_mismatches = []
+    async for item in db.items.find({}, {"_id": 0}):
+        total = item.get("total_quantity", 0)
+        avail = item.get("quantity_available", 0)
+        out = item.get("quantity_out", 0)
+        if total != avail + out:
+            qty_mismatches.append({"id": item["id"], "name": item["name"], "total": total, "available": avail, "out": out, "expected_available": total - out})
+        # Cross-check with active checkouts
+        active_out = 0
+        async for c in db.checkouts.find({"item_id": item["id"], "status": "Active"}, {"_id": 0}):
+            active_out += c["quantity_out"] - c.get("quantity_returned", 0) - c.get("quantity_missing", 0)
+        if active_out != out:
+            qty_mismatches.append({"id": item["id"], "name": item["name"], "recorded_out": out, "actual_active_out": active_out, "type": "checkout_mismatch"})
+
+    return {
+        "orphaned_checkouts": len(orphaned_checkouts),
+        "orphaned_issues": len(orphaned_issues),
+        "orphaned_lost_items": len(orphaned_lost),
+        "orphaned_maintenance": len(orphaned_maintenance),
+        "quantity_mismatches": len(qty_mismatches),
+        "details": {
+            "checkouts": orphaned_checkouts[:20],
+            "issues": orphaned_issues[:10],
+            "lost_items": orphaned_lost[:10],
+            "maintenance": orphaned_maintenance[:10],
+            "qty_mismatches": qty_mismatches[:10],
+        },
+        "total_orphaned": len(orphaned_checkouts) + len(orphaned_issues) + len(orphaned_lost) + len(orphaned_maintenance),
+    }
+
+@api_router.post("/audit/cleanup")
+async def cleanup_orphaned_data(current_user: dict = Depends(require_role("admin"))):
+    """Remove all orphaned records that reference non-existent items or projects."""
+    item_ids = set()
+    async for item in db.items.find({}, {"id": 1, "_id": 0}):
+        item_ids.add(item["id"])
+    project_ids = set()
+    async for proj in db.projects.find({}, {"id": 1, "_id": 0}):
+        project_ids.add(proj["id"])
+
+    # Find orphaned checkout IDs
+    orphan_checkout_ids = []
+    async for c in db.checkouts.find({}, {"_id": 0, "id": 1, "item_id": 1, "project_id": 1}):
+        if c["item_id"] not in item_ids or c["project_id"] not in project_ids:
+            orphan_checkout_ids.append(c["id"])
+
+    orphan_issue_ids = []
+    async for issue in db.issues.find({}, {"_id": 0, "id": 1, "item_id": 1}):
+        if issue["item_id"] not in item_ids:
+            orphan_issue_ids.append(issue["id"])
+
+    orphan_lost_ids = []
+    async for li in db.lost_items.find({}, {"_id": 0, "id": 1, "item_id": 1, "project_id": 1}):
+        if li["item_id"] not in item_ids or li["project_id"] not in project_ids:
+            orphan_lost_ids.append(li["id"])
+
+    orphan_maint_ids = []
+    async for m in db.maintenance.find({}, {"_id": 0, "id": 1, "item_id": 1}):
+        if m["item_id"] not in item_ids:
+            orphan_maint_ids.append(m["id"])
+
+    results = {}
+    if orphan_checkout_ids:
+        r = await db.checkouts.delete_many({"id": {"$in": orphan_checkout_ids}})
+        results["checkouts_cleaned"] = r.deleted_count
+    if orphan_issue_ids:
+        r = await db.issues.delete_many({"id": {"$in": orphan_issue_ids}})
+        results["issues_cleaned"] = r.deleted_count
+    if orphan_lost_ids:
+        r = await db.lost_items.delete_many({"id": {"$in": orphan_lost_ids}})
+        results["lost_items_cleaned"] = r.deleted_count
+    if orphan_maint_ids:
+        r = await db.maintenance.delete_many({"id": {"$in": orphan_maint_ids}})
+        results["maintenance_cleaned"] = r.deleted_count
+
+    return {"message": "Cleanup completed", "cleaned": results, "total_removed": sum(results.values()) if results else 0}
 
 
 app.include_router(api_router)

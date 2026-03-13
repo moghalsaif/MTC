@@ -1,22 +1,48 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Package, PackageOpen, AlertTriangle, Wrench, PackageX, FolderKanban } from 'lucide-react';
+import { Package, PackageOpen, AlertTriangle, Wrench, PackageX, FolderKanban, ShieldCheck, ShieldAlert, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../components/ui/button';
+import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
+  const [audit, setAudit] = useState(null);
+  const [cleaning, setCleaning] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
-    axios.get(`${API}/dashboard/stats`)
-      .then(r => setStats(r.data))
-      .catch(err => console.error('Dashboard fetch failed:', err))
-      .finally(() => setLoading(false));
-  }, []);
+    const fetchData = async () => {
+      try {
+        const [statsRes] = await Promise.all([axios.get(`${API}/dashboard/stats`)]);
+        setStats(statsRes.data);
+        if (isAdmin) {
+          const auditRes = await axios.get(`${API}/audit/integrity`);
+          setAudit(auditRes.data);
+        }
+      } catch (err) { console.error('Dashboard fetch failed:', err); }
+      setLoading(false);
+    };
+    fetchData();
+  }, [isAdmin]);
+
+  const handleCleanup = async () => {
+    setCleaning(true);
+    try {
+      const { data } = await axios.post(`${API}/audit/cleanup`);
+      toast.success(`Cleaned ${data.total_removed} orphaned records`);
+      const auditRes = await axios.get(`${API}/audit/integrity`);
+      setAudit(auditRes.data);
+    } catch (e) { toast.error('Cleanup failed'); }
+    setCleaning(false);
+  };
 
   if (loading) {
     return (
@@ -103,6 +129,51 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Data Integrity Audit - Admin Only */}
+      {isAdmin && audit && (
+        <div className={`bg-[#18181B] border rounded-lg p-5 ${audit.total_orphaned > 0 ? 'border-red-500/30' : 'border-emerald-500/30'}`} data-testid="audit-section">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              {audit.total_orphaned > 0 ? <ShieldAlert className="text-red-400" size={18} /> : <ShieldCheck className="text-emerald-400" size={18} />}
+              <h2 className="font-heading text-lg font-bold text-white">DATA INTEGRITY</h2>
+            </div>
+            {audit.total_orphaned > 0 && (
+              <Button onClick={handleCleanup} disabled={cleaning} data-testid="cleanup-btn" className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-wider rounded-lg text-xs h-8">
+                <Trash2 size={12} className="mr-1.5" />{cleaning ? 'Cleaning...' : 'Clean Orphaned Data'}
+              </Button>
+            )}
+          </div>
+          {audit.total_orphaned === 0 ? (
+            <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-4 py-3">
+              <ShieldCheck size={16} className="text-emerald-400" />
+              <span className="text-sm text-emerald-400 font-bold">All clear - zero data leakages detected</span>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="bg-[#0F0F0F] border border-[#232328] rounded-lg px-3 py-2 text-center">
+                  <span className="text-xl font-bold text-red-400 font-data">{audit.orphaned_checkouts}</span>
+                  <span className="text-[10px] text-[#52525B] block uppercase">Orphaned Checkouts</span>
+                </div>
+                <div className="bg-[#0F0F0F] border border-[#232328] rounded-lg px-3 py-2 text-center">
+                  <span className="text-xl font-bold text-amber-400 font-data">{audit.orphaned_issues}</span>
+                  <span className="text-[10px] text-[#52525B] block uppercase">Orphaned Issues</span>
+                </div>
+                <div className="bg-[#0F0F0F] border border-[#232328] rounded-lg px-3 py-2 text-center">
+                  <span className="text-xl font-bold text-amber-400 font-data">{audit.orphaned_lost_items}</span>
+                  <span className="text-[10px] text-[#52525B] block uppercase">Orphaned Lost Items</span>
+                </div>
+                <div className="bg-[#0F0F0F] border border-[#232328] rounded-lg px-3 py-2 text-center">
+                  <span className="text-xl font-bold text-amber-400 font-data">{audit.quantity_mismatches}</span>
+                  <span className="text-[10px] text-[#52525B] block uppercase">Qty Mismatches</span>
+                </div>
+              </div>
+              <p className="text-xs text-[#52525B]">{audit.total_orphaned} orphaned records found. Click "Clean Orphaned Data" to remove them safely.</p>
+            </div>
+          )}
         </div>
       )}
     </div>
