@@ -32,10 +32,10 @@ Build a film production equipment management system ("Mach Traffic Controller") 
 10. Packing List PDF - Professional PDF generation
 11. RBAC - admin/manager/user roles
 12. Timecode Calculator - Client-side timecode math
-13. **Costing Calculator (Two-Column):**
-    - Virtual Production: VP Studio (day rate, environments, travel, MIS), External Party (12 cost fields), Post Production (sound, color, editing)
-    - Regular Production: Pre-production, Production, Post-production, Marketing & Distribution, Legal & Misc - each with expandable line items (name, qty, rate, per-day), shoot days control
-    - Combined Grand Total with CSV export
+13. **Costing Calculator (Tabbed Full-Width):**
+    - **VP Tab:** VP Studio (day rate, environments, travel, MIS), External Party (12 cost fields), Post Production (sound, color, editing)
+    - **Regular Production Tab:** Full-width layout with Pre-production (13 items), Production (26 items), Post-production (10 items), Marketing & Distribution (6 items), Legal & Misc (6 items) - each with expandable line items (editable name, qty, rate, per-day/fixed badge), shoot days control, add/remove items
+    - Combined Grand Total with CSV export, tab-switching from total cards
 14. Request System - Asset procurement with admin approval
 15. Freelancer Module - Profiles, project payments, expense dashboard
 16. CRM Phase 1 - Dashboard, lead/client management, scoring, activity logs
