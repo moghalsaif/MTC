@@ -462,7 +462,7 @@ async def register(user_data: UserRegister):
             detail=f"Registration restricted to {ALLOWED_EMAIL_DOMAIN} email addresses only"
         )
     
-    existing = await db.users.find_one({"email": user_data.email})
+    existing = await db.users.find_one({"email": {"$regex": f"^{user_data.email.strip()}$", "$options": "i"}})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
@@ -491,7 +491,8 @@ async def register(user_data: UserRegister):
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: UserLogin):
-    user = await db.users.find_one({"email": credentials.email})
+    email_lower = credentials.email.strip()
+    user = await db.users.find_one({"email": {"$regex": f"^{email_lower}$", "$options": "i"}})
     if not user or not verify_password(credentials.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
