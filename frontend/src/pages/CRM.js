@@ -122,8 +122,6 @@ export default function CRM() {
     return true;
   });
 
-  const atRiskLeads = leads.filter(l => l.at_risk && l.status !== 'Won' && l.status !== 'Lost');
-
   const TABS = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'leads', label: 'Leads', icon: Target, count: leads.filter(l => l.status !== 'Won' && l.status !== 'Lost').length },
@@ -183,12 +181,6 @@ export default function CRM() {
               <div className="space-y-2">{SOURCES.map(s => { const c = dashboard.by_source?.[s] || 0; return (<div key={s} className="flex items-center justify-between"><span className="text-xs text-[#A1A1AA]">{s}</span><span className="text-sm text-white font-data font-bold">{c}</span></div>); })}</div>
             </div>
           </div>
-          {atRiskLeads.length > 0 && (
-            <div className="bg-[#18181B] border border-red-500/20 rounded-xl p-5">
-              <span className="text-sm font-bold text-red-400 uppercase tracking-wider block mb-3">At Risk Leads (5+ days inactive)</span>
-              <div className="space-y-1">{atRiskLeads.map(l => (<div key={l.id} className="flex items-center justify-between bg-[#0F0F0F] rounded-lg px-4 py-2.5 border border-red-500/10"><div><span className="text-sm text-white font-bold">{l.name}</span><span className="text-xs text-[#52525B] ml-2">{l.company}</span></div><span className="text-xs text-red-400 font-data">{Math.round(l.hours_inactive / 24)}d ago</span></div>))}</div>
-            </div>
-          )}
         </div>
       )}
 

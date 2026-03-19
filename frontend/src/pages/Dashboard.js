@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Package, PackageOpen, AlertTriangle, Wrench, PackageX, FolderKanban, ShieldCheck, ShieldAlert, Trash2 } from 'lucide-react';
+import { Package, PackageOpen, AlertTriangle, Wrench, PackageX, FolderKanban, ShieldCheck, ShieldAlert, Trash2, Bell, CheckCheck, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
@@ -13,6 +13,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [audit, setAudit] = useState(null);
+  const [notifications, setNotifications] = useState([]);
   const [cleaning, setCleaning] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -24,8 +25,12 @@ export default function Dashboard() {
         const [statsRes] = await Promise.all([axios.get(`${API}/dashboard/stats`)]);
         setStats(statsRes.data);
         if (isAdmin) {
-          const auditRes = await axios.get(`${API}/audit/integrity`);
+          const [auditRes, notifRes] = await Promise.all([
+            axios.get(`${API}/audit/integrity`),
+            axios.get(`${API}/notifications/inventory`),
+          ]);
           setAudit(auditRes.data);
+          setNotifications(notifRes.data);
         }
       } catch (err) { console.error('Dashboard fetch failed:', err); }
       setLoading(false);
@@ -42,6 +47,27 @@ export default function Dashboard() {
       setAudit(auditRes.data);
     } catch (e) { toast.error('Cleanup failed'); }
     setCleaning(false);
+  };
+
+  const markAllRead = async () => {
+    try {
+      await axios.post(`${API}/notifications/inventory/mark-read`);
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      toast.success('All marked as read');
+    } catch (e) { toast.error('Failed'); }
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const timeAgo = (ts) => {
+    const diff = Date.now() - new Date(ts).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
   };
 
   if (loading) {
@@ -126,6 +152,41 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <span className="font-data text-[#EF4444] text-xs font-bold">OVERDUE</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Inventory Add Notifications - Admin Only */}
+      {isAdmin && notifications.length > 0 && (
+        <div className="bg-[#18181B] border border-[#F9982E]/20 rounded-lg p-5" data-testid="inventory-notifications">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <Bell size={18} className="text-[#F9982E]" />
+              <h2 className="font-heading text-lg font-bold text-white">INVENTORY ADDITIONS</h2>
+              {unreadCount > 0 && <span className="bg-[#F9982E] text-black text-[10px] font-bold px-2 py-0.5 rounded-full">{unreadCount} new</span>}
+            </div>
+            {unreadCount > 0 && (
+              <button onClick={markAllRead} data-testid="mark-all-read" className="flex items-center gap-1 text-xs text-[#52525B] hover:text-[#F9982E] transition-colors font-bold uppercase tracking-wider">
+                <CheckCheck size={14} />Mark all read
+              </button>
+            )}
+          </div>
+          <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            {notifications.slice(0, 20).map(n => (
+              <div key={n.id} data-testid={`notif-${n.id}`} className={`flex items-center justify-between rounded-lg px-4 py-2.5 border transition-colors ${n.read ? 'bg-[#0F0F0F] border-[#1A1A1E]' : 'bg-[#F9982E]/5 border-[#F9982E]/15'}`}>
+                <div className="flex items-center gap-3">
+                  <Plus size={14} className={n.read ? 'text-[#3F3F46]' : 'text-[#F9982E]'} />
+                  <div>
+                    <span className={`text-sm font-medium ${n.read ? 'text-[#71717A]' : 'text-white'}`}>{n.item_name}</span>
+                    <span className="text-xs text-[#52525B] ml-2">x{n.quantity} &middot; {n.category}</span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className={`text-[10px] font-data block ${n.read ? 'text-[#3F3F46]' : 'text-[#F9982E]'}`}>{timeAgo(n.timestamp)}</span>
+                  <span className="text-[10px] text-[#52525B] font-data">by {n.added_by_name}</span>
+                </div>
               </div>
             ))}
           </div>

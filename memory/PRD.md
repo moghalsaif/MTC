@@ -44,6 +44,8 @@ Build a film production equipment management system ("Mach Traffic Controller") 
 19. **Data Integrity Audit System** - Detect & clean orphaned records (admin-only)
 20. **Cascade Deletes** - Item/project deletion cascades to related records
 21. **Dashboard Integrity Widget** - Visual data health indicator
+22. **Inventory Add Notifications** - Admin dashboard shows timestamped notifications when items are added (who, what, when) with mark-all-read
+23. **CRM Cleanup** - Removed "AT RISK LEADS" section, cleaned test data
 
 ### Data Cleanup Performed (Latest Session)
 - Cleaned 97 orphaned records (90 checkouts, 5 lost items, 2 maintenance)

@@ -532,6 +532,19 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(requir
         quantity_out=0
     )
     await db.items.insert_one(item.model_dump())
+    # Log notification for admin
+    await db.inventory_notifications.insert_one({
+        "id": str(uuid.uuid4()),
+        "type": "item_added",
+        "item_name": item.name,
+        "item_id": item.id,
+        "category": item.category,
+        "quantity": item.total_quantity,
+        "added_by": current_user["email"],
+        "added_by_name": current_user.get("name", current_user["email"]),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "read": False,
+    })
     return item
 
 @api_router.get("/items/{item_id}", response_model=Item)
@@ -1562,6 +1575,16 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         "active_projects": active_projects,
         "low_stock_items": low_stock_items
     }
+
+@api_router.get("/notifications/inventory")
+async def get_inventory_notifications(current_user: dict = Depends(require_role("admin"))):
+    notifications = await db.inventory_notifications.find({}, {"_id": 0}).sort("timestamp", -1).to_list(50)
+    return notifications
+
+@api_router.post("/notifications/inventory/mark-read")
+async def mark_notifications_read(current_user: dict = Depends(require_role("admin"))):
+    result = await db.inventory_notifications.update_many({"read": False}, {"$set": {"read": True}})
+    return {"marked": result.modified_count}
 
 # Licence Management Routes
 @api_router.get("/licences")
