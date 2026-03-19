@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { Search, Plus, Package, Pencil } from 'lucide-react';
+import { Search, Plus, Package, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
@@ -25,7 +25,7 @@ const categoryColors = {
 };
 
 export default function Inventory() {
-  const { canManageInventory } = useAuth();
+  const { canManageInventory, canDeleteInventory } = useAuth();
   const [items, setItems] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +78,17 @@ export default function Inventory() {
   }, [filteredItems]);
 
   const openMarkOut = (item) => { setSelectedItem(item); setMarkOutForm({ project_id: '', quantity: 1, expected_return: '', notes: '' }); setMarkOutDialog(true); };
+
+  const handleDeleteItem = async (item) => {
+    if (!window.confirm(`Delete "${item.name}"? This will also remove all related checkouts, issues, and maintenance records.`)) return;
+    try {
+      const { data } = await axios.delete(`${API}/items/${item.id}`);
+      toast.success(`Deleted "${item.name}"`);
+      fetchItems();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to delete item');
+    }
+  };
 
   const openEdit = (item) => {
     setEditForm({
@@ -157,6 +168,7 @@ export default function Inventory() {
       <td className="py-3 px-3 text-center w-24"><span className={`font-data text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border ${badge(item.status)}`}>{item.status}</span></td>
       <td className="py-3 px-4 text-right w-28">
         <div className="flex items-center justify-end gap-1">
+          {canDeleteInventory && <button onClick={() => handleDeleteItem(item)} data-testid={`delete-${item.id}`} className="p-1.5 rounded hover:bg-red-500/10 text-[#3F3F46] hover:text-red-400 transition-colors" title="Delete"><Trash2 size={13} /></button>}
           {canManageInventory && <button onClick={() => openEdit(item)} data-testid={`edit-${item.id}`} className="p-1.5 rounded hover:bg-[#232328] text-[#52525B] hover:text-white transition-colors" title="Edit"><Pencil size={13} /></button>}
           <button onClick={() => openMarkOut(item)} data-testid={`mark-out-${item.id}`} disabled={item.quantity_available === 0 || item.status !== 'Available'}
             className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${item.quantity_out > 0 ? 'bg-emerald-600/80 hover:bg-emerald-600 text-white' : 'bg-[#F9982E] hover:bg-[#F9982E]/90 text-black'}`}>
