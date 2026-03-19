@@ -618,7 +618,7 @@ async def get_projects(current_user: dict = Depends(get_current_user)):
     return projects
 
 @api_router.post("/projects", response_model=Project)
-async def create_project(project_data: ProjectCreate, current_user: dict = Depends(get_current_user)):
+async def create_project(project_data: ProjectCreate, current_user: dict = Depends(require_role("admin", "manager"))):
     project = Project(**project_data.model_dump())
     await db.projects.insert_one(project.model_dump())
     return project
@@ -631,7 +631,7 @@ async def get_project(project_id: str, current_user: dict = Depends(get_current_
     return project
 
 @api_router.delete("/projects/{project_id}")
-async def delete_project(project_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_project(project_id: str, current_user: dict = Depends(require_role("admin"))):
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -646,7 +646,7 @@ async def delete_project(project_id: str, current_user: dict = Depends(get_curre
 
 # Update Project
 @api_router.put("/projects/{project_id}")
-async def update_project(project_id: str, project_data: ProjectCreate, current_user: dict = Depends(get_current_user)):
+async def update_project(project_id: str, project_data: ProjectCreate, current_user: dict = Depends(require_role("admin", "manager"))):
     existing = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -663,7 +663,7 @@ async def update_project(project_id: str, project_data: ProjectCreate, current_u
 
 # Mark Out
 @api_router.post("/checkouts/mark-out")
-async def mark_out(request: MarkOutRequest, current_user: dict = Depends(get_current_user)):
+async def mark_out(request: MarkOutRequest, current_user: dict = Depends(require_role("admin", "manager"))):
     item = await db.items.find_one({"id": request.item_id}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -702,7 +702,7 @@ async def mark_out(request: MarkOutRequest, current_user: dict = Depends(get_cur
 
 # Start Packing
 @api_router.post("/checkouts/start-packing")
-async def start_packing(request: StartPackingRequest, current_user: dict = Depends(get_current_user)):
+async def start_packing(request: StartPackingRequest, current_user: dict = Depends(require_role("admin", "manager"))):
     packing_start = datetime.now(timezone.utc).isoformat()
     
     await db.checkouts.update_many(
@@ -714,7 +714,7 @@ async def start_packing(request: StartPackingRequest, current_user: dict = Depen
 
 # Quick Mark In (simplified) - now supports partial returns
 @api_router.post("/checkouts/quick-mark-in")
-async def quick_mark_in(request: QuickMarkInRequest, current_user: dict = Depends(get_current_user)):
+async def quick_mark_in(request: QuickMarkInRequest, current_user: dict = Depends(require_role("admin", "manager"))):
     checkout = await db.checkouts.find_one({"id": request.checkout_id}, {"_id": 0})
     if not checkout:
         raise HTTPException(status_code=404, detail="Checkout not found")
@@ -848,7 +848,7 @@ async def quick_mark_in(request: QuickMarkInRequest, current_user: dict = Depend
 
 # Mark In
 @api_router.post("/checkouts/mark-in")
-async def mark_in(request: MarkInRequest, current_user: dict = Depends(get_current_user)):
+async def mark_in(request: MarkInRequest, current_user: dict = Depends(require_role("admin", "manager"))):
     checkout = await db.checkouts.find_one({"id": request.checkout_id}, {"_id": 0})
     if not checkout:
         raise HTTPException(status_code=404, detail="Checkout not found")
@@ -938,7 +938,7 @@ async def get_project_checkouts(project_id: str, current_user: dict = Depends(ge
 
 # Transfer Equipment between projects
 @api_router.post("/checkouts/transfer")
-async def transfer_equipment(request: TransferEquipmentRequest, current_user: dict = Depends(get_current_user)):
+async def transfer_equipment(request: TransferEquipmentRequest, current_user: dict = Depends(require_role("admin", "manager"))):
     # Get the source checkout
     checkout = await db.checkouts.find_one({"id": request.checkout_id}, {"_id": 0})
     if not checkout:
@@ -1040,7 +1040,7 @@ async def create_issue(issue_data: IssueCreate, current_user: dict = Depends(get
     return issue
 
 @api_router.patch("/issues/{issue_id}")
-async def update_issue(issue_id: str, current_user: dict = Depends(get_current_user), status: Optional[str] = None, issue_update: Optional[IssueUpdate] = None):
+async def update_issue(issue_id: str, current_user: dict = Depends(require_role("admin", "manager")), status: Optional[str] = None, issue_update: Optional[IssueUpdate] = None):
     existing = await db.issues.find_one({"id": issue_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Issue not found")
@@ -1080,7 +1080,7 @@ async def get_lost_items(current_user: dict = Depends(get_current_user)):
     return lost_items
 
 @api_router.patch("/lost-items/{lost_item_id}")
-async def mark_recovered(lost_item_id: str, current_user: dict = Depends(get_current_user)):
+async def mark_recovered(lost_item_id: str, current_user: dict = Depends(require_role("admin"))):
     await db.lost_items.update_one(
         {"id": lost_item_id},
         {"$set": {"recovered": True, "recovered_at": datetime.now(timezone.utc).isoformat()}}
@@ -1094,7 +1094,7 @@ async def get_maintenance(current_user: dict = Depends(get_current_user)):
     return maintenance
 
 @api_router.post("/maintenance", response_model=Maintenance)
-async def create_maintenance(maintenance_data: MaintenanceCreate, current_user: dict = Depends(get_current_user)):
+async def create_maintenance(maintenance_data: MaintenanceCreate, current_user: dict = Depends(require_role("admin", "manager"))):
     item = await db.items.find_one({"id": maintenance_data.item_id}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -1116,7 +1116,7 @@ async def create_maintenance(maintenance_data: MaintenanceCreate, current_user: 
     return maintenance
 
 @api_router.patch("/maintenance/{maintenance_id}")
-async def complete_maintenance(maintenance_id: str, current_user: dict = Depends(get_current_user)):
+async def complete_maintenance(maintenance_id: str, current_user: dict = Depends(require_role("admin", "manager"))):
     maintenance = await db.maintenance.find_one({"id": maintenance_id}, {"_id": 0})
     if not maintenance:
         raise HTTPException(status_code=404, detail="Maintenance record not found")
@@ -1143,7 +1143,7 @@ async def get_reservations(current_user: dict = Depends(get_current_user)):
     return reservations
 
 @api_router.post("/reservations", response_model=Reservation)
-async def create_reservation(reservation_data: ReservationCreate, current_user: dict = Depends(get_current_user)):
+async def create_reservation(reservation_data: ReservationCreate, current_user: dict = Depends(require_role("admin", "manager"))):
     item = await db.items.find_one({"id": reservation_data.item_id}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -1570,7 +1570,7 @@ async def get_licences(current_user: dict = Depends(get_current_user)):
     return licences
 
 @api_router.post("/licences")
-async def create_licence(licence_data: LicenceCreate, current_user: dict = Depends(get_current_user)):
+async def create_licence(licence_data: LicenceCreate, current_user: dict = Depends(require_role("admin", "manager"))):
     licence = Licence(**licence_data.model_dump())
     await db.licences.insert_one(licence.model_dump())
     return licence
@@ -1583,7 +1583,7 @@ async def get_licence(licence_id: str, current_user: dict = Depends(get_current_
     return licence
 
 @api_router.put("/licences/{licence_id}")
-async def update_licence(licence_id: str, licence_data: LicenceUpdate, current_user: dict = Depends(get_current_user)):
+async def update_licence(licence_id: str, licence_data: LicenceUpdate, current_user: dict = Depends(require_role("admin", "manager"))):
     existing = await db.licences.find_one({"id": licence_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Licence not found")
@@ -1678,7 +1678,7 @@ async def get_assets(current_user: dict = Depends(get_current_user)):
     return assets
 
 @api_router.post("/assets")
-async def create_asset(asset_data: AssetCreate, current_user: dict = Depends(get_current_user)):
+async def create_asset(asset_data: AssetCreate, current_user: dict = Depends(require_role("admin", "manager"))):
     asset_dict = asset_data.model_dump()
     
     # Get project name if project_id provided
@@ -1698,7 +1698,7 @@ async def get_asset(asset_id: str, current_user: dict = Depends(get_current_user
     return asset
 
 @api_router.put("/assets/{asset_id}")
-async def update_asset(asset_id: str, asset_data: AssetUpdate, current_user: dict = Depends(get_current_user)):
+async def update_asset(asset_id: str, asset_data: AssetUpdate, current_user: dict = Depends(require_role("admin", "manager"))):
     existing = await db.assets.find_one({"id": asset_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -1837,7 +1837,7 @@ async def get_document_categories(current_user: dict = Depends(get_current_user)
     return [c["name"] for c in cats]
 
 @api_router.post("/document-categories")
-async def create_document_category(current_user: dict = Depends(get_current_user), name: str = ""):
+async def create_document_category(current_user: dict = Depends(require_role("admin", "manager")), name: str = ""):
     if not name or not name.strip():
         raise HTTPException(status_code=400, detail="Category name required")
     name = name.strip()
@@ -1848,7 +1848,7 @@ async def create_document_category(current_user: dict = Depends(get_current_user
     return {"name": name}
 
 @api_router.post("/documents")
-async def upload_document(current_user: dict = Depends(get_current_user), file: UploadFile = File(...), name: str = Form(...), category: str = Form("General"), description: str = Form("")):
+async def upload_document(current_user: dict = Depends(require_role("admin", "manager")), file: UploadFile = File(...), name: str = Form(...), category: str = Form("General"), description: str = Form("")):
     contents = await file.read()
     if len(contents) > 25 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large. Max 25MB.")
@@ -1885,7 +1885,7 @@ async def download_document(doc_id: str, current_user: dict = Depends(get_curren
     )
 
 @api_router.delete("/documents/{doc_id}")
-async def delete_document(doc_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_document(doc_id: str, current_user: dict = Depends(require_role("admin", "manager"))):
     result = await db.documents.delete_one({"id": doc_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -2174,7 +2174,7 @@ class ClientCreate(BaseModel):
     notes: Optional[str] = ""
 
 @api_router.post("/crm/leads")
-async def create_lead(data: LeadCreate, current_user: dict = Depends(get_current_user)):
+async def create_lead(data: LeadCreate, current_user: dict = Depends(require_role("admin", "manager"))):
     lead = {
         "id": str(uuid.uuid4()), **data.model_dump(),
         "status": "New", "score": 0,
@@ -2212,7 +2212,7 @@ async def get_leads(current_user: dict = Depends(get_current_user)):
     return leads
 
 @api_router.patch("/crm/leads/{lead_id}")
-async def update_lead(lead_id: str, data: LeadUpdate, current_user: dict = Depends(get_current_user)):
+async def update_lead(lead_id: str, data: LeadUpdate, current_user: dict = Depends(require_role("admin", "manager"))):
     lead = await db.crm_leads.find_one({"id": lead_id}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
@@ -2229,7 +2229,7 @@ async def update_lead(lead_id: str, data: LeadUpdate, current_user: dict = Depen
     return await db.crm_leads.find_one({"id": lead_id}, {"_id": 0})
 
 @api_router.post("/crm/leads/{lead_id}/note")
-async def add_lead_note(lead_id: str, current_user: dict = Depends(get_current_user), note: str = ""):
+async def add_lead_note(lead_id: str, current_user: dict = Depends(require_role("admin", "manager")), note: str = ""):
     lead = await db.crm_leads.find_one({"id": lead_id}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
@@ -2238,7 +2238,7 @@ async def add_lead_note(lead_id: str, current_user: dict = Depends(get_current_u
     return {"message": "Note added"}
 
 @api_router.post("/crm/clients")
-async def create_client(data: ClientCreate, current_user: dict = Depends(get_current_user)):
+async def create_client(data: ClientCreate, current_user: dict = Depends(require_role("admin", "manager"))):
     client = {"id": str(uuid.uuid4()), **data.model_dump(), "onboarding": {"welcome_email": False, "contract_signed": False, "advance_received": False, "brief_received": False, "kickoff_scheduled": False}, "created_by": current_user.get("name", ""), "created_at": datetime.now(timezone.utc).isoformat(), "updated_at": datetime.now(timezone.utc).isoformat()}
     await db.crm_clients.insert_one(client)
     if data.lead_id:
@@ -2250,7 +2250,7 @@ async def get_clients(current_user: dict = Depends(get_current_user)):
     return await db.crm_clients.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 @api_router.put("/crm/clients/{client_id}")
-async def update_client(client_id: str, data: ClientCreate, current_user: dict = Depends(get_current_user)):
+async def update_client(client_id: str, data: ClientCreate, current_user: dict = Depends(require_role("admin", "manager"))):
     existing = await db.crm_clients.find_one({"id": client_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -2258,7 +2258,7 @@ async def update_client(client_id: str, data: ClientCreate, current_user: dict =
     return await db.crm_clients.find_one({"id": client_id}, {"_id": 0})
 
 @api_router.patch("/crm/clients/{client_id}/onboarding")
-async def update_onboarding(client_id: str, current_user: dict = Depends(get_current_user), step: str = "", value: bool = True):
+async def update_onboarding(client_id: str, current_user: dict = Depends(require_role("admin", "manager")), step: str = "", value: bool = True):
     await db.crm_clients.update_one({"id": client_id}, {"$set": {f"onboarding.{step}": value, "updated_at": datetime.now(timezone.utc).isoformat()}})
     return await db.crm_clients.find_one({"id": client_id}, {"_id": 0})
 
@@ -2302,7 +2302,7 @@ async def crm_dashboard(current_user: dict = Depends(get_current_user)):
 
 
 @api_router.post("/crm/leads/import-csv")
-async def import_leads_csv(current_user: dict = Depends(get_current_user), file: UploadFile = File(...)):
+async def import_leads_csv(current_user: dict = Depends(require_role("admin", "manager")), file: UploadFile = File(...)):
     import csv, io
     contents = await file.read()
     try:

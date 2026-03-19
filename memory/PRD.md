@@ -71,6 +71,28 @@ Build a film production equipment management system ("Mach Traffic Controller") 
 - Backend refactoring: split server.py into routes/ and models/
 - Data import from email inboxes, contacts sync
 
+## RBAC Matrix (Hardened)
+
+| Action | Admin | Manager | User |
+|--------|-------|---------|------|
+| **View** all data (items, projects, issues, CRM, docs) | Yes | Yes | Yes |
+| **Report issues** | Yes | Yes | Yes |
+
 ## Test Credentials
 - Admin: sanat@machvisuals.com / sanat@123
 - Manager: rohit@machvisuals.com / rohit@123
+| **Submit asset requests** | Yes | Yes | Yes |
+| **Add/Edit inventory items** | Yes | Yes | No |
+| **Create/Edit projects** | Yes | Yes | No |
+| **Checkout/Return/Transfer equipment** | Yes | Yes | No |
+| **Resolve issues** | Yes | Yes | No |
+| **Create/Complete maintenance** | Yes | Yes | No |
+| **Create reservations** | Yes | Yes | No |
+| **Create/Edit licences & assets** | Yes | Yes | No |
+| **Upload/Delete documents** | Yes | Yes | No |
+| **CRM: Create/Edit leads, clients, import CSV** | Yes | Yes | No |
+| **Delete items/projects/licences/assets** | Yes | No | No |
+| **Approve/Reject asset requests** | Yes | No | No |
+| **Mark lost items recovered** | Yes | No | No |
+| **Freelancer management** | Yes | No | No |
+| **Data integrity audit/cleanup** | Yes | No | No |
