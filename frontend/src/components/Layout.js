@@ -17,50 +17,53 @@ const navGroups = [
   {
     label: 'Mach Traffic Controller',
     items: [
-      { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-      { path: '/inventory', icon: Package, label: 'Inventory' },
-      { path: '/items-out', icon: PackageOpen, label: 'Items Out' },
-      { path: '/projects', icon: FolderKanban, label: 'Projects' },
-      { path: '/issues', icon: AlertTriangle, label: 'Issues' },
-      { path: '/lost-items', icon: PackageX, label: 'Lost Items' },
-      { path: '/maintenance', icon: Wrench, label: 'Maintenance' },
+      { path: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'manager', 'user'] },
+      { path: '/inventory', icon: Package, label: 'Inventory', roles: ['admin', 'manager', 'user'] },
+      { path: '/items-out', icon: PackageOpen, label: 'Items Out', roles: ['admin', 'manager', 'user'] },
+      { path: '/projects', icon: FolderKanban, label: 'Projects', roles: ['admin', 'manager', 'user'] },
+      { path: '/issues', icon: AlertTriangle, label: 'Issues', roles: ['admin', 'manager', 'user'] },
+      { path: '/lost-items', icon: PackageX, label: 'Lost Items', roles: ['admin', 'manager'] },
+      { path: '/maintenance', icon: Wrench, label: 'Maintenance', roles: ['admin', 'manager'] },
     ],
   },
   {
     label: 'Licences & Assets',
     items: [
-      { path: '/licences', icon: CreditCard, label: 'Licences & Assets' },
+      { path: '/licences', icon: CreditCard, label: 'Licences & Assets', roles: ['admin', 'manager'] },
     ],
   },
   {
     label: 'Documentation',
     items: [
-      { path: '/documentation', icon: FileText, label: 'Documents' },
+      { path: '/documentation', icon: FileText, label: 'Documents', roles: ['admin', 'manager'] },
     ],
   },
   {
     label: 'CRM',
     items: [
-      { path: '/crm', icon: Target, label: 'CRM Dashboard' },
+      { path: '/crm', icon: Target, label: 'CRM Dashboard', roles: ['admin', 'manager'] },
     ],
   },
   {
     label: 'Tools at mach',
     items: [
-      { path: '/timecode-calculator', icon: Calculator, label: 'Timecode Calculator' },
-      { path: '/costing-calculator', icon: IndianRupee, label: 'Production Costing' },
-      { path: '/requests', icon: ClipboardList, label: 'Requests' },
-      { path: '/freelancers', icon: Users, label: 'Freelancer Database' },
+      { path: '/timecode-calculator', icon: Calculator, label: 'Timecode Calculator', roles: ['admin', 'manager', 'user'] },
+      { path: '/costing-calculator', icon: IndianRupee, label: 'Production Costing', roles: ['admin', 'manager'] },
+      { path: '/requests', icon: ClipboardList, label: 'Requests', roles: ['admin', 'manager', 'user'] },
+      { path: '/freelancers', icon: Users, label: 'Freelancer Database', roles: ['admin'] },
     ],
   },
 ];
 
-function NavDropdown({ group }) {
+function NavDropdown({ group, userRole }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const location = useLocation();
 
-  const isGroupActive = group.items.some(item => {
+  const visibleItems = group.items.filter(item => !item.roles || item.roles.includes(userRole));
+  if (visibleItems.length === 0) return null;
+
+  const isGroupActive = visibleItems.some(item => {
     if (item.path === '/') return location.pathname === '/';
     return location.pathname.startsWith(item.path);
   });
@@ -72,8 +75,8 @@ function NavDropdown({ group }) {
   }, []);
 
   // If single item, render directly
-  if (group.items.length === 1) {
-    const item = group.items[0];
+  if (visibleItems.length === 1) {
+    const item = visibleItems[0];
     const Icon = item.icon;
     const active = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
     return (
@@ -104,7 +107,7 @@ function NavDropdown({ group }) {
       </button>
       {open && (
         <div className="absolute top-full left-0 mt-1 bg-[#18181B] border border-[#232328] rounded-lg shadow-xl py-1 min-w-[180px] z-50">
-          {group.items.map(item => {
+          {visibleItems.map(item => {
             const Icon = item.icon;
             const active = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
             return (
@@ -209,12 +212,13 @@ export default function Layout() {
               {navGroups.map((group, gi) => (
                 <div key={group.label} className="flex items-center">
                   {gi > 0 && <div className="h-5 w-px bg-[#232328] mx-1" />}
-                  <NavDropdown group={group} />
+                  <NavDropdown group={group} userRole={user?.role} />
                 </div>
               ))}
             </div>
             {/* Right: Actions */}
             <div className="flex items-center gap-3">
+              {(user?.role === 'admin' || user?.role === 'manager') && (
               <button
                 onClick={openTransferDialog}
                 disabled={loadingData}
@@ -225,6 +229,7 @@ export default function Layout() {
                 <ArrowRightLeft size={14} />
                 <span>Transfer</span>
               </button>
+              )}
               <div className="h-4 w-px bg-[#232328]" />
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-[#52525B] font-data" data-testid="user-name">{user?.name}</span>
