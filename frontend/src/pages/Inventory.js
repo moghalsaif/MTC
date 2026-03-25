@@ -139,8 +139,8 @@ export default function Inventory() {
     if (!editForm.name || !editForm.category) { toast.error('Name and category required'); return; }
     try {
       const p = { ...editForm };
+      delete p.total_quantity; // quantity only changes via wrap-up
       if (p.purchase_price) p.purchase_price = parseFloat(p.purchase_price); else delete p.purchase_price;
-      if (p.total_quantity !== undefined) p.total_quantity = parseInt(p.total_quantity);
       await axios.put(`${API}/items/${selectedItem.id}`, p);
       toast.success('Item updated');
       setEditItemDialog(false); fetchItems();
@@ -357,7 +357,7 @@ export default function Inventory() {
                 </Select>
               </div>
               <div><Label className="text-white text-sm mb-2 block">Sub-Category</Label><Input data-testid="edit-subcategory-input" value={editForm.sub_category || ''} onChange={(e) => setEditForm({ ...editForm, sub_category: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" /></div>
-              <div><Label className="text-white text-sm mb-2 block">Total Quantity</Label><Input type="number" data-testid="edit-quantity-input" min="0" value={editForm.total_quantity ?? ''} onChange={(e) => setEditForm({ ...editForm, total_quantity: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" /></div>
+              <div><Label className="text-[#52525B] text-sm mb-2 block">Total Quantity <span className="text-[10px] text-[#3F3F46]">(changes only via wrap-up)</span></Label><div className="bg-[#0F0F0F] border border-[#232328] rounded-lg h-11 flex items-center px-3 text-white font-data font-bold opacity-60">{selectedItem?.total_quantity}</div></div>
               <div><Label className="text-white text-sm mb-2 block">Location (City)</Label><Input data-testid="edit-location-input" value={editForm.location || ''} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11" /></div>
               <div><Label className="text-white text-sm mb-2 block">Status</Label>
                 <Select value={editForm.status || 'Available'} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>

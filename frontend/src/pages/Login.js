@@ -6,27 +6,22 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 
+const BG_IMAGE = 'https://static.prod-images.emergentagent.com/jobs/62d7898c-7789-4ffd-b52a-affeacb9c778/images/6cdc499d94530ba3eb412e9b7042e3ad6c0a9680d3a948d68eb2c5f0bea56a8e.png';
+
 export default function Login() {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, register } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    const result = isLogin
-      ? await login(email, password)
-      : await register(email, password, name);
-
+    const result = await login(email, password);
     setLoading(false);
-
     if (result.success) {
-      toast.success(isLogin ? 'Login successful' : 'Account created successfully');
+      toast.success('Login successful');
       navigate('/');
     } else {
       toast.error(result.error);
@@ -34,9 +29,19 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] flex items-center justify-center px-4" style={{background: 'radial-gradient(ellipse at 50% 0%, rgba(249,152,46,0.06) 0%, transparent 60%), #0F0F0F'}}>
-      <div className="w-full max-w-md">
-        <div className="bg-[#18181B] border border-[#232328] rounded-2xl p-8 shadow-2xl">
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 relative overflow-hidden">
+      {/* World map background */}
+      <div
+        className="absolute inset-0 bg-center bg-no-repeat opacity-40"
+        style={{
+          backgroundImage: `url(${BG_IMAGE})`,
+          backgroundSize: 'cover',
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-[#050505]/80" />
+
+      <div className="w-full max-w-md relative z-10">
+        <div className="bg-[#18181B]/90 backdrop-blur-xl border border-[#232328] rounded-2xl p-8 shadow-2xl">
           <h1 className="font-heading text-4xl font-black text-white tracking-tight mb-1" data-testid="login-title">
             MACH TRAFFIC CONTROLLER
           </h1>
@@ -44,25 +49,9 @@ export default function Login() {
           <p className="text-[#A1A1AA] text-sm mb-8">Virtual Production Equipment Tracker</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <div>
-                <Label htmlFor="name" className="text-white text-sm font-medium mb-2 block">
-                  Full Name
-                </Label>
-                <Input
-                  id="name"
-                  type="text"
-                  data-testid="name-input"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required={!isLogin}
-                  className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11 rounded-lg"
-                />
-              </div>
-            )}
             <div>
               <Label htmlFor="email" className="text-white text-sm font-medium mb-2 block">
-                Email {!isLogin && <span className="text-[#F9982E] text-xs">(@machvisuals.com only)</span>}
+                Email
               </Label>
               <Input
                 id="email"
@@ -71,7 +60,6 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder={!isLogin ? "yourname@machvisuals.com" : ""}
                 className="bg-[#0F0F0F] border-[#232328] focus:border-[#F9982E] text-white h-11 rounded-lg"
               />
             </div>
@@ -95,19 +83,9 @@ export default function Login() {
               disabled={loading}
               className="w-full bg-[#F9982E] hover:bg-[#F9982E]/90 text-black font-bold uppercase tracking-wider rounded-lg h-11 shadow-lg"
             >
-              {loading ? 'PROCESSING...' : isLogin ? 'LOGIN' : 'CREATE ACCOUNT'}
+              {loading ? 'PROCESSING...' : 'LOGIN'}
             </Button>
           </form>
-
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              data-testid="toggle-auth-mode"
-              className="text-sm text-[#A1A1AA] hover:text-[#F9982E] transition-colors"
-            >
-              {isLogin ? "Don't have an account? Register" : 'Already have an account? Login'}
-            </button>
-          </div>
         </div>
       </div>
     </div>
