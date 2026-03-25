@@ -62,11 +62,9 @@ def _build_where(filter_dict: Dict[str, Any]) -> Tuple[str, List[Any]]:
                 clauses.append(f"{_json_path_expr(key)} = ANY(${len(params)+1})")
                 params.append(list(arr))
             continue
-
         # Plain equality
         clauses.append(f"{_json_path_expr(key)} = ${len(params)+1}")
         params.append(value)
-
     return " AND ".join(clauses) if clauses else "TRUE", params
 
 
@@ -205,10 +203,15 @@ class PgStore:
         assert self._pool is not None
         for t in self._tables:
             await self._pool.execute(
-                f\"\"\"\n+                CREATE TABLE IF NOT EXISTS {t} (\n+                  id TEXT PRIMARY KEY,\n+                  doc JSONB NOT NULL\n+                );\n+                \"\"\"\n+            )
+                f"""
+                CREATE TABLE IF NOT EXISTS {t} (
+                    id TEXT PRIMARY KEY,
+                    doc JSONB NOT NULL
+                );
+                """
+            )
 
     def __getattr__(self, item: str):
         if item in self._tables:
             return _Collection(self, item)
         raise AttributeError(item)
-
