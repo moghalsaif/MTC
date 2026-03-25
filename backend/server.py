@@ -61,7 +61,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         email: str = payload.get("sub")
         if email is None:
             raise HTTPException(status_code=401, detail="Invalid authentication credentials")
-        user = await db.users.find_one({"email": email}, {"_id": 0})
+        user = await db.users.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}}, {"_id": 0})
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
         return user
@@ -499,7 +499,7 @@ async def login(credentials: UserLogin):
     if "role" not in user:
         user["role"] = get_role_for_email(user["email"])
         await db.users.update_one({"email": user["email"]}, {"$set": {"role": user["role"]}})
-    token = create_access_token(data={"sub": credentials.email})
+    token = create_access_token(data={"sub": user["email"]})
     user_response = UserResponse(
         id=user["id"],
         email=user["email"],
