@@ -191,7 +191,7 @@ class PgStore:
     async def connect(self):
         if not self._database_url:
             raise RuntimeError("DATABASE_URL is required for Postgres/Supabase")
-        self._pool = await asyncpg.create_pool(dsn=self._database_url, min_size=1, max_size=10, statement_cache_size=0)
+        self._pool = await asyncpg.create_pool(dsn=self._database_url, min_size=1, max_size=10, statement_cache_size=0, ssl='require')
         await self._ensure_tables()
 
     async def close(self):
