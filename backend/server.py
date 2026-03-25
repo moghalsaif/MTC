@@ -2,7 +2,6 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFi
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
@@ -24,12 +23,38 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Fill, PatternFill, Alignment, Border, Side
 import csv
 
+from pgstore import PgStore
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# Supabase Postgres connection (set DATABASE_URL on Render/locally)
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
+# Tables/collections used by this app (Mongo collections → Postgres tables)
+TABLES = [
+    "users",
+    "items",
+    "inventory_notifications",
+    "projects",
+    "checkouts",
+    "issues",
+    "lost_items",
+    "maintenance",
+    "reservations",
+    "licences",
+    "assets",
+    "activity_logs",
+    "documents",
+    "document_categories",
+    "requests",
+    "freelancers",
+    "freelancer_payments",
+    "crm_leads",
+    "crm_clients",
+]
+
+db = PgStore(DATABASE_URL, TABLES)
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -436,11 +461,11 @@ class ReservationCreate(BaseModel):
     end_date: str
 
 # Auth Routes
-ALLOWED_EMAIL_DOMAIN = "@machvisuals.com"
+ALLOWED_EMAIL_DOMAIN = os.environ.get('ALLOWED_EMAIL_DOMAIN', '')  # Empty = allow all domains
 
 ROLE_MAP = {
-    "sanat@machvisuals.com": "admin",
-    "rohit@machvisuals.com": "manager",
+    os.environ.get('ADMIN_EMAIL', 'sanat@machvisuals.com'): "admin",
+    os.environ.get('MANAGER_EMAIL', 'rohit@machvisuals.com'): "manager",
 }
 
 def get_role_for_email(email: str) -> str:
@@ -455,10 +480,10 @@ def require_role(*allowed_roles):
 
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user_data: UserRegister):
-    # Validate email domain - only @machvisuals.com allowed
-    if not user_data.email.lower().endswith(ALLOWED_EMAIL_DOMAIN):
+    # Validate email domain if restriction is configured
+    if ALLOWED_EMAIL_DOMAIN and not user_data.email.lower().endswith(ALLOWED_EMAIL_DOMAIN):
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"Registration restricted to {ALLOWED_EMAIL_DOMAIN} email addresses only"
         )
     
@@ -1599,36 +1624,6 @@ async def create_licence(licence_data: LicenceCreate, current_user: dict = Depen
     await db.licences.insert_one(licence.model_dump())
     return licence
 
-@api_router.get("/licences/{licence_id}")
-async def get_licence(licence_id: str, current_user: dict = Depends(get_current_user)):
-    licence = await db.licences.find_one({"id": licence_id}, {"_id": 0})
-    if not licence:
-        raise HTTPException(status_code=404, detail="Licence not found")
-    return licence
-
-@api_router.put("/licences/{licence_id}")
-async def update_licence(licence_id: str, licence_data: LicenceUpdate, current_user: dict = Depends(require_role("admin", "manager"))):
-    existing = await db.licences.find_one({"id": licence_id}, {"_id": 0})
-    if not existing:
-        raise HTTPException(status_code=404, detail="Licence not found")
-    
-    update_data = {k: v for k, v in licence_data.model_dump().items() if v is not None}
-    
-    await db.licences.update_one(
-        {"id": licence_id},
-        {"$set": update_data}
-    )
-    
-    updated = await db.licences.find_one({"id": licence_id}, {"_id": 0})
-    return updated
-
-@api_router.delete("/licences/{licence_id}")
-async def delete_licence(licence_id: str, current_user: dict = Depends(require_role("admin", "manager"))):
-    result = await db.licences.delete_one({"id": licence_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Licence not found")
-    return {"message": "Licence deleted successfully"}
-
 @api_router.get("/licences/stats/summary")
 async def get_licence_stats(current_user: dict = Depends(get_current_user)):
     licences = await db.licences.find({}, {"_id": 0}).to_list(1000)
@@ -1689,6 +1684,36 @@ async def get_licence_stats(current_user: dict = Depends(get_current_user)):
         "by_vendor": by_vendor,
         "expiring_soon": expiring_soon
     }
+
+@api_router.get("/licences/{licence_id}")
+async def get_licence(licence_id: str, current_user: dict = Depends(get_current_user)):
+    licence = await db.licences.find_one({"id": licence_id}, {"_id": 0})
+    if not licence:
+        raise HTTPException(status_code=404, detail="Licence not found")
+    return licence
+
+@api_router.put("/licences/{licence_id}")
+async def update_licence(licence_id: str, licence_data: LicenceUpdate, current_user: dict = Depends(require_role("admin", "manager"))):
+    existing = await db.licences.find_one({"id": licence_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Licence not found")
+
+    update_data = {k: v for k, v in licence_data.model_dump().items() if v is not None}
+
+    await db.licences.update_one(
+        {"id": licence_id},
+        {"$set": update_data}
+    )
+
+    updated = await db.licences.find_one({"id": licence_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/licences/{licence_id}")
+async def delete_licence(licence_id: str, current_user: dict = Depends(require_role("admin", "manager"))):
+    result = await db.licences.delete_one({"id": licence_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Licence not found")
+    return {"message": "Licence deleted successfully"}
 
 # Purchased Assets Routes
 @api_router.get("/assets")
@@ -2499,7 +2524,9 @@ app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
+    # Auth uses the `Authorization: Bearer <token>` header (no cookies),
+    # so we should not enable credentials when using wildcard origins.
+    allow_credentials=False,
     allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
@@ -2511,6 +2538,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+@app.on_event("startup")
+async def startup_db():
+    await db.connect()
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    await db.close()

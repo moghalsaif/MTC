@@ -276,9 +276,7 @@ The system comes pre-seeded with 83 items from your studio's equipment list incl
 
 ## User Credentials
 
-**Test Account**
-- Email: admin@studio.com
-- Password: admin123
+Credentials are managed by your system administrator.
 
 ## Support & Issues
 

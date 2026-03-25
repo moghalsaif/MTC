@@ -20,13 +20,22 @@ export const AuthProvider = ({ children }) => {
   const API = `${BACKEND_URL}/api`;
 
   useEffect(() => {
+    if (!BACKEND_URL || !String(BACKEND_URL).trim() || String(BACKEND_URL).includes('undefined')) {
+      // If the frontend was built without REACT_APP_BACKEND_URL, avoid hanging in "loading".
+      // Users will be redirected to /login instead of seeing a blank screen.
+      // eslint-disable-next-line no-console
+      console.error('Missing or invalid REACT_APP_BACKEND_URL. Check build-time env configuration.');
+      setLoading(false);
+      return;
+    }
+
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       fetchUser();
     } else {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, BACKEND_URL]);
 
   const fetchUser = async () => {
     try {
