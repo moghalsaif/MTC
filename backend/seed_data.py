@@ -1,17 +1,17 @@
 import asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
-from dotenv import load_dotenv
-from pathlib import Path
 import uuid
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+from pathlib import Path
+from pgstore import PgStore
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+TABLES = ["items"]
+store = PgStore(DATABASE_URL, TABLES)
 
 EQUIPMENT_DATA = [
     {"name": "Power charger adapter", "category": "Power", "quantity": 8},
@@ -96,35 +96,49 @@ EQUIPMENT_DATA = [
     {"name": "Mouse Pads", "category": "Peripherals", "quantity": 1},
     {"name": "A6000 Wheel Base", "category": "Camera Accessories", "quantity": 1},
     {"name": "Green Mats", "category": "Production Gear", "quantity": 1},
-    {"name": "Amaron Power Cable", "category": "Power", "quantity": 1}
+    {"name": "Amaron Power Cable", "category": "Power", "quantity": 1},
 ]
 
+
 async def seed_equipment():
-    existing_count = await db.items.count_documents({})
-    if existing_count > 0:
-        print(f"Database already has {existing_count} items. Skipping seed.")
-        return
-    
-    items = []
-    for equip in EQUIPMENT_DATA:
-        item = {
-            "id": str(uuid.uuid4()),
-            "name": equip["name"],
-            "category": equip["category"],
-            "total_quantity": equip["quantity"],
-            "quantity_available": equip["quantity"],
-            "quantity_out": 0,
-            "location_in_studio": None,
-            "status": "Available",
-            "condition": "OK",
-            "min_stock": 2 if equip["category"] in ["Power", "Cables", "Storage"] else None,
-            "notes": None,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-        items.append(item)
-    
-    await db.items.insert_many(items)
-    print(f"Successfully seeded {len(items)} items into the database.")
+    await store.connect()
+    try:
+        existing_count = await store.items.count_documents({})
+        if existing_count > 0:
+            print(f"Database already has {existing_count} items. Skipping seed.")
+            return
+
+        count = 0
+        for equip in EQUIPMENT_DATA:
+            item = {
+                "id": str(uuid.uuid4()),
+                "name": equip["name"],
+                "category": equip["category"],
+                "sub_category": None,
+                "total_quantity": equip["quantity"],
+                "quantity_available": equip["quantity"],
+                "quantity_out": 0,
+                "location": None,
+                "status": "Available",
+                "condition": "OK",
+                "min_stock": 2 if equip["category"] in ["Power", "Cables", "Storage"] else None,
+                "notes": None,
+                "product_id": None,
+                "serial_number": None,
+                "purchase_date": None,
+                "expiry_date": None,
+                "warranty_expiry": None,
+                "vendor": None,
+                "purchase_price": None,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            await store.items.insert_one(item)
+            count += 1
+
+        print(f"Successfully seeded {count} items into the database.")
+    finally:
+        await store.close()
+
 
 if __name__ == "__main__":
     asyncio.run(seed_equipment())

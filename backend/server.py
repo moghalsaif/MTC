@@ -2404,15 +2404,13 @@ async def import_leads_csv(current_user: dict = Depends(require_role("admin", "m
 @api_router.get("/audit/integrity")
 async def audit_data_integrity(current_user: dict = Depends(require_role("admin"))):
     """Scan for orphaned records and data leakages across all collections."""
-    item_ids = set()
-    async for item in db.items.find({}, {"id": 1, "_id": 0}):
-        item_ids.add(item["id"])
-    project_ids = set()
-    async for proj in db.projects.find({}, {"id": 1, "_id": 0}):
-        project_ids.add(proj["id"])
+    all_items = await db.items.find({}, {"_id": 0}).to_list(10000)
+    item_ids = {i["id"] for i in all_items}
+    all_projects = await db.projects.find({}, {"_id": 0}).to_list(10000)
+    project_ids = {p["id"] for p in all_projects}
 
     orphaned_checkouts = []
-    async for c in db.checkouts.find({}, {"_id": 0}):
+    for c in await db.checkouts.find({}, {"_id": 0}).to_list(10000):
         reasons = []
         if c["item_id"] not in item_ids:
             reasons.append("item_missing")
@@ -2422,12 +2420,12 @@ async def audit_data_integrity(current_user: dict = Depends(require_role("admin"
             orphaned_checkouts.append({"id": c["id"], "item_name": c["item_name"], "project_name": c["project_name"], "status": c["status"], "reasons": reasons})
 
     orphaned_issues = []
-    async for issue in db.issues.find({}, {"_id": 0}):
+    for issue in await db.issues.find({}, {"_id": 0}).to_list(10000):
         if issue["item_id"] not in item_ids:
             orphaned_issues.append({"id": issue["id"], "item_name": issue["item_name"], "status": issue["status"]})
 
     orphaned_lost = []
-    async for li in db.lost_items.find({}, {"_id": 0}):
+    for li in await db.lost_items.find({}, {"_id": 0}).to_list(10000):
         reasons = []
         if li["item_id"] not in item_ids:
             reasons.append("item_missing")
@@ -2437,22 +2435,20 @@ async def audit_data_integrity(current_user: dict = Depends(require_role("admin"
             orphaned_lost.append({"id": li["id"], "item_name": li["item_name"], "project_name": li["project_name"], "reasons": reasons})
 
     orphaned_maintenance = []
-    async for m in db.maintenance.find({}, {"_id": 0}):
+    for m in await db.maintenance.find({}, {"_id": 0}).to_list(10000):
         if m["item_id"] not in item_ids:
             orphaned_maintenance.append({"id": m["id"], "item_name": m["item_name"], "status": m["status"]})
 
     # Quantity integrity check
     qty_mismatches = []
-    async for item in db.items.find({}, {"_id": 0}):
+    for item in all_items:
         total = item.get("total_quantity", 0)
         avail = item.get("quantity_available", 0)
         out = item.get("quantity_out", 0)
         if total != avail + out:
             qty_mismatches.append({"id": item["id"], "name": item["name"], "total": total, "available": avail, "out": out, "expected_available": total - out})
-        # Cross-check with active checkouts
-        active_out = 0
-        async for c in db.checkouts.find({"item_id": item["id"], "status": "Active"}, {"_id": 0}):
-            active_out += c["quantity_out"] - c.get("quantity_returned", 0) - c.get("quantity_missing", 0)
+        active_checkouts = await db.checkouts.find({"item_id": item["id"], "status": "Active"}, {"_id": 0}).to_list(1000)
+        active_out = sum(c["quantity_out"] - c.get("quantity_returned", 0) - c.get("quantity_missing", 0) for c in active_checkouts)
         if active_out != out:
             qty_mismatches.append({"id": item["id"], "name": item["name"], "recorded_out": out, "actual_active_out": active_out, "type": "checkout_mismatch"})
 
@@ -2475,33 +2471,25 @@ async def audit_data_integrity(current_user: dict = Depends(require_role("admin"
 @api_router.post("/audit/cleanup")
 async def cleanup_orphaned_data(current_user: dict = Depends(require_role("admin"))):
     """Remove all orphaned records that reference non-existent items or projects."""
-    item_ids = set()
-    async for item in db.items.find({}, {"id": 1, "_id": 0}):
-        item_ids.add(item["id"])
-    project_ids = set()
-    async for proj in db.projects.find({}, {"id": 1, "_id": 0}):
-        project_ids.add(proj["id"])
+    item_ids = {i["id"] for i in await db.items.find({}, {"_id": 0}).to_list(10000)}
+    project_ids = {p["id"] for p in await db.projects.find({}, {"_id": 0}).to_list(10000)}
 
-    # Find orphaned checkout IDs
-    orphan_checkout_ids = []
-    async for c in db.checkouts.find({}, {"_id": 0, "id": 1, "item_id": 1, "project_id": 1}):
-        if c["item_id"] not in item_ids or c["project_id"] not in project_ids:
-            orphan_checkout_ids.append(c["id"])
-
-    orphan_issue_ids = []
-    async for issue in db.issues.find({}, {"_id": 0, "id": 1, "item_id": 1}):
-        if issue["item_id"] not in item_ids:
-            orphan_issue_ids.append(issue["id"])
-
-    orphan_lost_ids = []
-    async for li in db.lost_items.find({}, {"_id": 0, "id": 1, "item_id": 1, "project_id": 1}):
-        if li["item_id"] not in item_ids or li["project_id"] not in project_ids:
-            orphan_lost_ids.append(li["id"])
-
-    orphan_maint_ids = []
-    async for m in db.maintenance.find({}, {"_id": 0, "id": 1, "item_id": 1}):
-        if m["item_id"] not in item_ids:
-            orphan_maint_ids.append(m["id"])
+    orphan_checkout_ids = [
+        c["id"] for c in await db.checkouts.find({}, {"_id": 0}).to_list(10000)
+        if c["item_id"] not in item_ids or c["project_id"] not in project_ids
+    ]
+    orphan_issue_ids = [
+        i["id"] for i in await db.issues.find({}, {"_id": 0}).to_list(10000)
+        if i["item_id"] not in item_ids
+    ]
+    orphan_lost_ids = [
+        li["id"] for li in await db.lost_items.find({}, {"_id": 0}).to_list(10000)
+        if li["item_id"] not in item_ids or li["project_id"] not in project_ids
+    ]
+    orphan_maint_ids = [
+        m["id"] for m in await db.maintenance.find({}, {"_id": 0}).to_list(10000)
+        if m["item_id"] not in item_ids
+    ]
 
     results = {}
     if orphan_checkout_ids:
@@ -2518,6 +2506,129 @@ async def cleanup_orphaned_data(current_user: dict = Depends(require_role("admin
         results["maintenance_cleaned"] = r.deleted_count
 
     return {"message": "Cleanup completed", "cleaned": results, "total_removed": sum(results.values()) if results else 0}
+
+
+SEED_EQUIPMENT = [
+    {"name": "Power charger adapter", "category": "Power", "quantity": 8},
+    {"name": "Apple IPAD Pro", "category": "Computing", "quantity": 1},
+    {"name": "Ethernet Cables", "category": "Cables", "quantity": 7},
+    {"name": "Clapper Board", "category": "Production Gear", "quantity": 1},
+    {"name": "Accsoon Digitek Battery", "category": "Power", "quantity": 1},
+    {"name": "Hollyland LARK M2 Wireless Lavalier Microphone", "category": "Audio", "quantity": 1},
+    {"name": "BMD Camera Small Rig 6K Mount", "category": "Camera Accessories", "quantity": 5},
+    {"name": "Keyboard", "category": "Peripherals", "quantity": 1},
+    {"name": "Meta Quest 3 VR Headset and Controllers", "category": "VR", "quantity": 1},
+    {"name": "Sanat SanDisk SSD 500GB", "category": "Storage", "quantity": 1},
+    {"name": "Amaran 300c Light (White)", "category": "Lighting", "quantity": 2},
+    {"name": "Camera Digitek Tripod Stand", "category": "Camera Accessories", "quantity": 1},
+    {"name": "BenQ Monitor 27Inch", "category": "Display", "quantity": 1},
+    {"name": "Godox Honeycomb Grid Softbox", "category": "Lighting", "quantity": 1},
+    {"name": "RTX 4070 Setup", "category": "Computing", "quantity": 2},
+    {"name": "C Stand", "category": "Lighting", "quantity": 2},
+    {"name": "Lightcraft Jetset Vertical Origin", "category": "Lighting", "quantity": 2},
+    {"name": "Camera Calliberation Checkerboard", "category": "Camera Accessories", "quantity": 1},
+    {"name": "PowerBank (10000MAH)", "category": "Power", "quantity": 1},
+    {"name": "Samsung Portable T7 SSD 4TB", "category": "Storage", "quantity": 2},
+    {"name": "Digitek Stick Light", "category": "Lighting", "quantity": 1},
+    {"name": "TP Link Wifi Modem", "category": "Networking", "quantity": 2},
+    {"name": "Asus Pro Art Monitor 24Inch", "category": "Display", "quantity": 1},
+    {"name": "Iphone Cooler", "category": "Cooling", "quantity": 1},
+    {"name": "Small Cooler Fans", "category": "Cooling", "quantity": 9},
+    {"name": "Camera Power Adapter", "category": "Power", "quantity": 1},
+    {"name": "Rack 12G SDI Cables", "category": "Cables", "quantity": 1},
+    {"name": "HDMI To Display Port Converter", "category": "Cables", "quantity": 1},
+    {"name": "Green Gaffe Tape", "category": "Production Gear", "quantity": 1},
+    {"name": "Camera Lens EF (Canon 24-70mm)", "category": "Camera", "quantity": 1},
+    {"name": "Tentacle Sync Track E Pocket Audio Recorder", "category": "Audio", "quantity": 1},
+    {"name": "Samsung Portable T7 SSD 1TB", "category": "Storage", "quantity": 8},
+    {"name": "Apple Iphone 11", "category": "Mobile", "quantity": 1},
+    {"name": "Mobile Stand", "category": "Peripherals", "quantity": 1},
+    {"name": "Lightcraft Jetset Floor Origin", "category": "Lighting", "quantity": 5},
+    {"name": "Apple Iphone 15 Pro", "category": "Mobile", "quantity": 1},
+    {"name": "Accsoon Seemo Pro 4K", "category": "Camera Accessories", "quantity": 20},
+    {"name": "HDMI Cables", "category": "Cables", "quantity": 4},
+    {"name": "Accsoon Simpex Battery", "category": "Power", "quantity": 1},
+    {"name": "Blackmagic SDI Distribution 4K", "category": "Video", "quantity": 1},
+    {"name": "Extension Board", "category": "Power", "quantity": 1},
+    {"name": "Camera Battery Charger", "category": "Power", "quantity": 1},
+    {"name": "Type C Cables", "category": "Cables", "quantity": 3},
+    {"name": "Mouse", "category": "Peripherals", "quantity": 1},
+    {"name": "LG OLED TV", "category": "Display", "quantity": 3},
+    {"name": "Blackmagic Pocket Cinema Camera 6K G2", "category": "Camera", "quantity": 2},
+    {"name": "Blackmagic HDMI To SDI Bi-Directional Converter", "category": "Video", "quantity": 1},
+    {"name": "RTX 4080 Setup", "category": "Computing", "quantity": 1},
+    {"name": "Light Stand", "category": "Lighting", "quantity": 1},
+    {"name": "Ethernet Switch Board", "category": "Networking", "quantity": 1},
+    {"name": "Lacie C to C cables (orange)", "category": "Cables", "quantity": 2},
+    {"name": "Jio Tracker", "category": "Tracking", "quantity": 1},
+    {"name": "Bosch measurement", "category": "Tools", "quantity": 1},
+    {"name": "Blackmagic Decklink CaptureCard 8K Pro G2", "category": "Video", "quantity": 4},
+    {"name": "AJA KI Pro Ultra 12G Media Recorder", "category": "Media", "quantity": 1},
+    {"name": "AJA PAK Dock Pro", "category": "Media", "quantity": 66},
+    {"name": "Blackmagic Ultimatte 12 Power Cable", "category": "Power", "quantity": 1},
+    {"name": "AJA 1TB Drives", "category": "Storage", "quantity": 1},
+    {"name": "Blackmagic Ultimatte 12 4K", "category": "Video", "quantity": 10},
+    {"name": "AJA Power Cable", "category": "Power", "quantity": 1},
+    {"name": "PC Power Cables", "category": "Power", "quantity": 3},
+    {"name": "A6000ADA Setup", "category": "Camera", "quantity": 1},
+    {"name": "Display cables", "category": "Cables", "quantity": 1},
+    {"name": "TP link dongle (A6000)", "category": "Networking", "quantity": 3},
+    {"name": "Sony FX3", "category": "Camera", "quantity": 1},
+    {"name": "Small Rig Mount", "category": "Camera Accessories", "quantity": 1},
+    {"name": "Alan Keys", "category": "Tools", "quantity": 3},
+    {"name": "Power Bank 20000MAH", "category": "Power", "quantity": 1},
+    {"name": "International power adapters", "category": "Power", "quantity": 1},
+    {"name": "Type B cable (Pentab)", "category": "Cables", "quantity": 1},
+    {"name": "PC Cleaner Fan", "category": "Cooling", "quantity": 1},
+    {"name": "Smallrig blue mounts", "category": "Camera Accessories", "quantity": 1},
+    {"name": "SDI Distributer", "category": "Video", "quantity": 1},
+    {"name": "Power Cable", "category": "Power", "quantity": 3},
+    {"name": "Treadmill", "category": "Fitness", "quantity": 1},
+    {"name": "Rasberry PI and Mouse", "category": "Computing", "quantity": 83},
+    {"name": "Sensor Box Set", "category": "Sensors", "quantity": 1},
+    {"name": "Treadmill Rasberry PI Power cable", "category": "Power", "quantity": 1},
+    {"name": "Treadmill Mouse sensor Mount", "category": "Mounts", "quantity": 1},
+    {"name": "Mouse Pads", "category": "Peripherals", "quantity": 1},
+    {"name": "A6000 Wheel Base", "category": "Camera Accessories", "quantity": 1},
+    {"name": "Green Mats", "category": "Production Gear", "quantity": 1},
+    {"name": "Amaron Power Cable", "category": "Power", "quantity": 1},
+]
+
+@api_router.post("/seed")
+async def seed_database(current_user: dict = Depends(require_role("admin"))):
+    """Seed the database with initial equipment data. Safe to call multiple times - skips if items exist."""
+    existing = await db.items.count_documents({})
+    if existing > 0:
+        return {"message": f"Database already has {existing} items. Skipping seed.", "seeded": 0}
+
+    count = 0
+    for equip in SEED_EQUIPMENT:
+        item = {
+            "id": str(uuid.uuid4()),
+            "name": equip["name"],
+            "category": equip["category"],
+            "sub_category": None,
+            "total_quantity": equip["quantity"],
+            "quantity_available": equip["quantity"],
+            "quantity_out": 0,
+            "location": None,
+            "status": "Available",
+            "condition": "OK",
+            "min_stock": 2 if equip["category"] in ["Power", "Cables", "Storage"] else None,
+            "notes": None,
+            "product_id": None,
+            "serial_number": None,
+            "purchase_date": None,
+            "expiry_date": None,
+            "warranty_expiry": None,
+            "vendor": None,
+            "purchase_price": None,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.items.insert_one(item)
+        count += 1
+
+    return {"message": f"Successfully seeded {count} items.", "seeded": count}
 
 
 app.include_router(api_router)
