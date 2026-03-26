@@ -2631,6 +2631,11 @@ async def seed_database(current_user: dict = Depends(require_role("admin"))):
     return {"message": f"Successfully seeded {count} items.", "seeded": count}
 
 
+@app.get("/health")
+async def health_check():
+    """Public health endpoint for Railway / load-balancer liveness probes."""
+    return {"status": "ok"}
+
 app.include_router(api_router)
 
 app.add_middleware(
