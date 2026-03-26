@@ -1893,7 +1893,7 @@ async def create_document_category(current_user: dict = Depends(require_role("ad
     existing = await db.document_categories.find_one({"name": name})
     if existing:
         raise HTTPException(status_code=400, detail="Category already exists")
-    await db.document_categories.insert_one({"name": name, "created_at": datetime.now(timezone.utc).isoformat()})
+    await db.document_categories.insert_one({"id": str(uuid.uuid4()), "name": name, "created_at": datetime.now(timezone.utc).isoformat()})
     return {"name": name}
 
 @api_router.post("/documents")

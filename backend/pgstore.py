@@ -55,8 +55,12 @@ def _build_where(filter_dict: Dict[str, Any]) -> Tuple[str, List[Any]]:
                 clauses.append(f"({(_json_path_expr(key))})::numeric > ${len(params)+1}")
                 params.append(ops["$gt"])
             if "$ne" in ops:
-                clauses.append(f"{_json_path_expr(key)} <> ${len(params)+1}")
-                params.append(ops["$ne"])
+                if ops["$ne"] is None:
+                    # SQL: col <> NULL is always NULL/false; must use IS NOT NULL
+                    clauses.append(f"{_json_path_expr(key)} IS NOT NULL")
+                else:
+                    clauses.append(f"{_json_path_expr(key)} <> ${len(params)+1}")
+                    params.append(ops["$ne"])
             if "$in" in ops:
                 arr = ops["$in"]
                 clauses.append(f"{_json_path_expr(key)} = ANY(${len(params)+1})")
@@ -137,7 +141,14 @@ class _Collection:
             return {"matched_count": 0, "modified_count": 0}
         if "$set" in update:
             existing.update(update["$set"])
-        else:
+        if "$push" in update:
+            # Append a single value to an array field (Mongo $push semantics)
+            for k, v in update["$push"].items():
+                if isinstance(existing.get(k), list):
+                    existing[k] = existing[k] + [v]
+                else:
+                    existing[k] = [v]
+        if "$set" not in update and "$push" not in update:
             existing.update(update)
         sql = f"UPDATE {self._table} SET doc=$2::jsonb WHERE id=$1"
         await self._store._pool.execute(sql, existing["id"], json.dumps(existing))
